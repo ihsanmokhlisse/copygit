@@ -1,0 +1,37 @@
+project_name: copygit
+version: "{{ .Version }}"
+release:
+  github:
+    owner: imokhlis
+    name: copygit
+
+builds:
+  - id: copygit
+    main: ./cmd/copygit
+    binary: copygit
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.Version={{ .Version }}
+
+archives:
+  - format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+
+dockers: []

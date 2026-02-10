@@ -1,0 +1,6 @@
+version = "1"
+
+[[sync_targets]]
+provider = "nonexistent-provider"
+remote_url = "git@github.com:user/my-repo.git"
+enabled = true

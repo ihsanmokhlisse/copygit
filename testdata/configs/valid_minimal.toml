@@ -1,0 +1,14 @@
+version = "1"
+
+[providers.my-github]
+name = "my-github"
+type = "github"
+base_url = "https://github.com"
+auth_method = "ssh"
+
+[sync]
+max_retries = 3
+
+[log]
+level = "info"
+format = "text"

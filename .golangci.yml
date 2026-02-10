@@ -1,0 +1,55 @@
+run:
+  go: "1.21"
+  timeout: 5m
+
+linters:
+  enable:
+    # Error handling
+    - errcheck
+    - errname
+    - errorlint
+    - nilerr
+    # Bug detection
+    - govet
+    - staticcheck
+    - unused
+    - unparam
+    # Complexity
+    - gocyclo
+    - gocognit
+    - funlen
+    - nestif
+    # Performance
+    - prealloc
+    - perfsprint
+    # Security
+    - gosec
+    # Style
+    - revive
+    - gocritic
+    - goimports
+    # Modern Go
+    - copyloopvar
+    - exptostd
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  gocognit:
+    min-complexity: 20
+  funlen:
+    lines: 80
+    statements: 50
+  nestif:
+    min-complexity: 4
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+
+issues:
+  exclude-dirs:
+    - testdata
+  max-issues-per-linter: 0
+  max-same-issues: 0

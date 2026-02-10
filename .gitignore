@@ -1,0 +1,24 @@
+# IDE and editor config
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Go build artifacts
+bin/
+cover.out
+cover.html
+*.exe
+*.test
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Go module cache (if vendoring)
+vendor/
+
+# Internal planning / scaffolding (not part of the project)
+specs/
+docs/plans/

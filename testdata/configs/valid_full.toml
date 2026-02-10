@@ -1,0 +1,34 @@
+version = "1"
+
+[providers.my-github]
+name = "my-github"
+type = "github"
+base_url = "https://github.com"
+auth_method = "ssh"
+preferred = true
+
+[providers.work-gitlab]
+name = "work-gitlab"
+type = "gitlab"
+base_url = "https://gitlab.com"
+auth_method = "token"
+
+[providers.self-gitea]
+name = "self-gitea"
+type = "gitea"
+base_url = "https://git.example.com"
+auth_method = "ssh"
+
+[sync]
+max_retries = 5
+retry_base_delay = "5s"
+push_tags = true
+push_branches = true
+
+[daemon]
+poll_interval = "30s"
+max_retries = 10
+
+[log]
+level = "info"
+format = "text"
