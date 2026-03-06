@@ -36,6 +36,12 @@ CopyGit keeps your Git repositories in sync across multiple hosting providers. P
 
 ## Installation
 
+### Homebrew (macOS / Linux)
+
+```bash
+brew install ihsanmokhlisse/tap/copygit
+```
+
 ### From Source
 
 ```bash
@@ -101,9 +107,26 @@ copygit hooks status               Check hook state
 copygit daemon start               Start background sync daemon
 copygit daemon stop                Stop the daemon
 copygit daemon status              Check daemon state
+
+copygit clone <url>                Clone and auto-register with CopyGit
+copygit health                     Check connectivity to all providers
+copygit completion [bash|zsh|fish] Generate shell completions
 ```
 
 Use `--verbose` for debug output, `--json` for machine-readable output, `--quiet` for silence.
+
+### Shell Completions
+
+```bash
+# Bash
+source <(copygit completion bash)
+
+# Zsh
+source <(copygit completion zsh)
+
+# Fish
+copygit completion fish | source
+```
 
 ## How It Works
 
