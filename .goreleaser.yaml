@@ -56,4 +56,20 @@ changelog:
     - title: Other
       order: 999
 
+brews:
+  - repository:
+      owner: ihsanmokhlisse
+      name: homebrew-tap
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: "https://ihsanmokhlisse.github.io/copygit/"
+    description: "Multi-provider Git sync — mirror repos to GitHub, GitLab, Gitea, and any Git server"
+    license: "MIT"
+    install: |
+      bin.install "copygit"
+    test: |
+      system "#{bin}/copygit", "version"
+    dependencies:
+      - name: git
+
 dockers: []

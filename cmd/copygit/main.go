@@ -77,7 +77,10 @@ func newRootCmd() *cobra.Command {
 	cmd.AddCommand(command.NewConfigCmdV2())
 	cmd.AddCommand(command.NewHooksCmd())
 	cmd.AddCommand(command.NewDaemonCmd())
+	cmd.AddCommand(command.NewCloneCmd())
+	cmd.AddCommand(command.NewHealthCmd())
 	cmd.AddCommand(newVersionCmd())
+	cmd.AddCommand(newCompletionCmd())
 
 	return cmd
 }
@@ -91,4 +94,50 @@ func newVersionCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func newCompletionCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "completion [bash|zsh|fish|powershell]",
+		Short: "Generate shell completion scripts",
+		Long: `Generate shell completion scripts for CopyGit.
+
+To load completions:
+
+Bash:
+  $ source <(copygit completion bash)
+  # Or add to ~/.bashrc:
+  $ copygit completion bash > /etc/bash_completion.d/copygit
+
+Zsh:
+  $ source <(copygit completion zsh)
+  # Or add to fpath:
+  $ copygit completion zsh > "${fpath[1]}/_copygit"
+
+Fish:
+  $ copygit completion fish | source
+  # Or persist:
+  $ copygit completion fish > ~/.config/fish/completions/copygit.fish
+
+PowerShell:
+  PS> copygit completion powershell | Out-String | Invoke-Expression`,
+		DisableFlagsInUseLine: true,
+		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
+		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			switch args[0] {
+			case "bash":
+				return cmd.Root().GenBashCompletion(cmd.OutOrStdout())
+			case "zsh":
+				return cmd.Root().GenZshCompletion(cmd.OutOrStdout())
+			case "fish":
+				return cmd.Root().GenFishCompletion(cmd.OutOrStdout(), true)
+			case "powershell":
+				return cmd.Root().GenPowerShellCompletionWithDesc(cmd.OutOrStdout())
+			default:
+				return nil
+			}
+		},
+	}
+	return cmd
 }
