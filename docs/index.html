@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CopyGit - Multi-Provider Git Sync</title>
+  <meta name="description" content="Mirror your Git repositories across GitHub, GitLab, Gitea, and any Git server automatically.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F500;</text></svg>">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-card: #1c2128;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --green: #3fb950;
+      --orange: #d29922;
+      --purple: #bc8cff;
+      --red: #f85149;
+      --code-bg: #0d1117;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: var(--accent-hover); }
+
+    /* ─── Navigation ─────────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(13, 17, 23, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+    }
+
+    nav .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+
+    nav .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    nav .logo span { color: var(--accent); }
+
+    nav .nav-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    nav .nav-links a {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    nav .nav-links a:hover { color: var(--text); }
+
+    .github-link {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .github-link:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    /* ─── Hero ───────────────────────────────────────────────────── */
+    .hero {
+      padding: 10rem 2rem 6rem;
+      text-align: center;
+      background: radial-gradient(ellipse at 50% 0%, rgba(88, 166, 255, 0.08) 0%, transparent 60%);
+    }
+
+    .hero h1 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero .subtitle {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--bg-secondary);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .hero-install {
+      margin-top: 3rem;
+      display: inline-block;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .hero-install code { color: var(--green); }
+
+    /* ─── Sections ───────────────────────────────────────────────── */
+    section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 5rem 2rem;
+    }
+
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.02em;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      margin-bottom: 3rem;
+      max-width: 600px;
+    }
+
+    /* ─── Feature Grid ───────────────────────────────────────────── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .feature-card h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    /* ─── Code Blocks ────────────────────────────────────────────── */
+    .code-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    .code-info h3 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .code-info p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.7;
+    }
+
+    .code-info .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .step-text { font-size: 0.95rem; color: var(--text-muted); }
+    .step-text strong { color: var(--text); }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      line-height: 1.7;
+    }
+
+    pre .comment { color: var(--text-muted); }
+    pre .cmd { color: var(--green); }
+    pre .flag { color: var(--orange); }
+    pre .string { color: var(--accent); }
+    pre .output { color: var(--text-muted); }
+
+    /* ─── Commands Table ─────────────────────────────────────────── */
+    .commands-grid {
+      display: grid;
+      gap: 0;
+    }
+
+    .cmd-group {
+      margin-bottom: 2rem;
+    }
+
+    .cmd-group-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+      padding-left: 0.25rem;
+    }
+
+    .cmd-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .cmd-table td {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+      vertical-align: top;
+    }
+
+    .cmd-table td:first-child {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--green);
+      white-space: nowrap;
+      width: 40%;
+    }
+
+    .cmd-table td:last-child {
+      color: var(--text-muted);
+    }
+
+    .cmd-table tr:last-child td { border-bottom: none; }
+
+    /* ─── Flags ──────────────────────────────────────────────────── */
+    .flags-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    .flags-table th {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 2px solid var(--border);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .flags-table td {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+
+    .flags-table td:first-child {
+      font-family: var(--mono);
+      color: var(--orange);
+      white-space: nowrap;
+    }
+
+    .flags-table td:last-child { color: var(--text-muted); }
+
+    /* ─── Config Section ─────────────────────────────────────────── */
+    .config-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .config-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .config-card-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .config-card-header .path {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--accent);
+    }
+
+    .config-card-header .label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: var(--bg);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .config-card pre {
+      border: none;
+      border-radius: 0;
+      margin: 0;
+    }
+
+    /* ─── Credential Chain ───────────────────────────────────────── */
+    .chain {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-width: 600px;
+    }
+
+    .chain-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .chain-item:first-child { border-radius: 10px 10px 0 0; }
+    .chain-item:last-child { border-radius: 0 0 10px 10px; }
+    .chain-item:not(:last-child) { border-bottom: none; }
+
+    .chain-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .chain-item .name { font-weight: 600; font-size: 0.95rem; }
+    .chain-item .desc { color: var(--text-muted); font-size: 0.85rem; }
+
+    /* ─── Architecture ───────────────────────────────────────────── */
+    .arch-diagram {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      line-height: 1.8;
+      overflow-x: auto;
+      white-space: pre;
+      color: var(--text-muted);
+    }
+
+    .arch-diagram .dir { color: var(--accent); font-weight: 600; }
+    .arch-diagram .desc { color: var(--text-muted); }
+
+    /* ─── Install Section ────────────────────────────────────────── */
+    .install-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .install-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+    }
+
+    .install-card h3 {
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .install-card pre {
+      margin: 0;
+      font-size: 0.85rem;
+    }
+
+    .platform-badges {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .badge {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* ─── Footer ─────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 3rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--text-muted); }
+    footer a:hover { color: var(--accent); }
+
+    /* ─── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 2.25rem; }
+      .hero .subtitle { font-size: 1rem; }
+      .code-section { grid-template-columns: 1fr; }
+      nav .nav-links { display: none; }
+      .hero { padding: 8rem 1.5rem 4rem; }
+      section { padding: 3rem 1.5rem; }
+    }
+
+    /* ─── Divider ────────────────────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo">Copy<span>Git</span></div>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#quickstart">Quick Start</a></li>
+      <li><a href="#commands">Commands</a></li>
+      <li><a href="#config">Configuration</a></li>
+      <li><a href="#install">Installation</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+    </ul>
+    <a href="https://github.com/ihsanmokhlisse/copygit" class="github-link" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <h1>Mirror your repos.<br>Everywhere.</h1>
+  <p class="subtitle">
+    Push once to GitHub, GitLab, Gitea, and any Git server simultaneously.
+    Zero lock-in. Zero friction.
+  </p>
+  <div class="hero-buttons">
+    <a href="#quickstart" class="btn btn-primary">Get Started</a>
+    <a href="https://github.com/ihsanmokhlisse/copygit/releases/latest" class="btn btn-secondary" target="_blank" rel="noopener">Download</a>
+  </div>
+  <div class="hero-install">
+    <code>$ go install github.com/ihsanmokhlisse/copygit/cmd/copygit@latest</code>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Features -->
+<section id="features">
+  <h2 class="section-title">Features</h2>
+  <p class="section-desc">Everything you need to keep your code mirrored and safe.</p>
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(88, 166, 255, 0.1); color: var(--accent);">&#x2194;</div>
+      <h3>Multi-Provider Sync</h3>
+      <p>Push to GitHub, GitLab, Gitea, and generic Git servers simultaneously with a single command.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(63, 185, 80, 0.1); color: var(--green);">&#x1F512;</div>
+      <h3>Secure Credentials</h3>
+      <p>OS keychain, SSH keys, git helpers, environment variables, or encrypted file. Tokens never stored in plaintext config.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(210, 153, 34, 0.1); color: var(--orange);">&#x26A1;</div>
+      <h3>Auto-Sync Hooks</h3>
+      <p>Install a post-push hook and every <code>git push</code> automatically mirrors to all providers. No extra commands.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(188, 140, 255, 0.1); color: var(--purple);">&#x1F4E6;</div>
+      <h3>Multi-Repo Management</h3>
+      <p>Register dozens of repositories and push them all at once with <code>copygit push --all</code>.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(248, 81, 73, 0.1); color: var(--red);">&#x26A0;</div>
+      <h3>Conflict Detection</h3>
+      <p>Detects diverged branches with ahead/behind counts. Warn, merge, or force-push strategies.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(88, 166, 255, 0.1); color: var(--accent);">&#x1F916;</div>
+      <h3>Background Daemon</h3>
+      <p>Continuous polling-based sync runs in the background. Start, stop, and check status anytime.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Quick Start -->
+<section id="quickstart">
+  <h2 class="section-title">Quick Start</h2>
+  <p class="section-desc">Get mirroring in under a minute.</p>
+  <div class="code-section">
+    <div class="code-info">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text"><strong>Add your providers</strong> &mdash; Define where you want to mirror. GitHub, GitLab, Gitea, or any Git server.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text"><strong>Authenticate</strong> &mdash; Store credentials securely. Tokens are hidden and stored in your OS keychain.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text"><strong>Register a repo</strong> &mdash; Point CopyGit at any local Git repository and select which providers to sync.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text"><strong>Push everywhere</strong> &mdash; One command mirrors your code to all configured providers.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text"><strong>Automate it</strong> &mdash; Install a hook so every <code>git push</code> mirrors automatically.</div>
+      </div>
+    </div>
+    <pre><span class="comment"># Add providers</span>
+<span class="cmd">copygit config add-provider</span> <span class="string">github</span> github https://github.com
+<span class="cmd">copygit config add-provider</span> <span class="string">gitlab</span> gitlab https://gitlab.com
+
+<span class="comment"># Authenticate (token stored in OS keychain)</span>
+<span class="cmd">copygit login</span> <span class="flag">--provider</span> github
+<span class="cmd">copygit login</span> <span class="flag">--provider</span> gitlab
+
+<span class="comment"># Register your repo</span>
+cd ~/projects/my-app
+<span class="cmd">copygit init</span> .
+
+<span class="comment"># Push to all providers</span>
+<span class="cmd">copygit push</span>
+
+<span class="comment"># Auto-sync on every git push</span>
+<span class="cmd">copygit hooks install</span></pre>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Commands -->
+<section id="commands">
+  <h2 class="section-title">Commands</h2>
+  <p class="section-desc">Full CLI reference.</p>
+
+  <div class="commands-grid">
+    <div class="cmd-group">
+      <div class="cmd-group-title">Core</div>
+      <table class="cmd-table">
+        <tr><td>copygit init &lt;path&gt;</td><td>Register a repo for syncing. Auto-detects remotes, prompts for provider selection, creates <code>.copygit.toml</code>.</td></tr>
+        <tr><td>copygit push [path]</td><td>Push branches and tags to all configured providers. Use <code>--all</code> for all repos, <code>--dry-run</code> to preview.</td></tr>
+        <tr><td>copygit sync [path]</td><td>Full bidirectional sync: fetch all remotes, detect conflicts, then push. Use <code>--force</code> to push despite divergence.</td></tr>
+        <tr><td>copygit status [path]</td><td>Show sync state per provider (in-sync, ahead, behind). Use <code>--all</code> for all repos.</td></tr>
+        <tr><td>copygit list</td><td>List all registered repositories with their last sync time.</td></tr>
+        <tr><td>copygit remove &lt;path&gt;</td><td>Unregister a repo. Use <code>--clean</code> to also delete <code>.copygit.toml</code>.</td></tr>
+      </table>
+    </div>
+
+    <div class="cmd-group">
+      <div class="cmd-group-title">Configuration</div>
+      <table class="cmd-table">
+        <tr><td>copygit config add-provider &lt;name&gt; &lt;type&gt; &lt;url&gt;</td><td>Add a provider. Types: <code>github</code>, <code>gitlab</code>, <code>gitea</code>, <code>generic</code>.</td></tr>
+        <tr><td>copygit config list-providers</td><td>Show all configured providers and their auth methods.</td></tr>
+        <tr><td>copygit config remove-provider &lt;name&gt;</td><td>Remove a provider from the global configuration.</td></tr>
+        <tr><td>copygit login --provider &lt;name&gt;</td><td>Authenticate with a provider. Interactive token prompt (hidden input). Validates before storing.</td></tr>
+      </table>
+    </div>
+
+    <div class="cmd-group">
+      <div class="cmd-group-title">Automation</div>
+      <table class="cmd-table">
+        <tr><td>copygit hooks install [path]</td><td>Install a post-push hook that mirrors on every <code>git push</code>.</td></tr>
+        <tr><td>copygit hooks uninstall [path]</td><td>Remove CopyGit's hook from the repo. Safe: preserves other hooks.</td></tr>
+        <tr><td>copygit hooks status [path]</td><td>Show whether the auto-sync hook is installed.</td></tr>
+        <tr><td>copygit daemon start</td><td>Start background sync daemon. Polls all repos at a configurable interval (default: 30s).</td></tr>
+        <tr><td>copygit daemon stop</td><td>Stop the running daemon via PID file signal.</td></tr>
+        <tr><td>copygit daemon status</td><td>Check if the daemon is running.</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h3 style="margin-top: 2.5rem; font-size: 1.15rem;">Global Flags</h3>
+  <table class="flags-table">
+    <thead>
+      <tr><th>Flag</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>-c, --config &lt;path&gt;</td><td>Override config file path</td></tr>
+      <tr><td>-j, --json</td><td>Machine-readable JSON output</td></tr>
+      <tr><td>-v, --verbose</td><td>Debug-level logging</td></tr>
+      <tr><td>-q, --quiet</td><td>Suppress non-error output</td></tr>
+      <tr><td>--output text|json</td><td>Output format for push, sync, status, list commands</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="divider">
+
+<!-- Configuration -->
+<section id="config">
+  <h2 class="section-title">Configuration</h2>
+  <p class="section-desc">Three files, clean separation of concerns.</p>
+
+  <div class="config-cards">
+    <div class="config-card">
+      <div class="config-card-header">
+        <span class="path">~/.copygit/config</span>
+        <span class="label">Global</span>
+      </div>
+      <pre><span class="comment"># Provider definitions (shared across all repos)</span>
+
+[providers.github]
+name       = <span class="string">"github"</span>
+type       = <span class="string">"github"</span>
+base_url   = <span class="string">"https://github.com"</span>
+auth_method = <span class="string">"https"</span>
+preferred  = <span class="flag">true</span>
+
+[providers.gitlab]
+name       = <span class="string">"gitlab"</span>
+type       = <span class="string">"gitlab"</span>
+base_url   = <span class="string">"https://gitlab.com"</span>
+auth_method = <span class="string">"token"</span>
+
+[daemon]
+poll_interval = <span class="string">"30s"</span></pre>
+    </div>
+
+    <div class="config-card">
+      <div class="config-card-header">
+        <span class="path">&lt;repo&gt;/.copygit.toml</span>
+        <span class="label">Per-repo</span>
+      </div>
+      <pre><span class="comment"># Which providers this repo syncs to</span>
+
+version = <span class="string">"1"</span>
+
+[[sync_targets]]
+provider   = <span class="string">"github"</span>
+remote_url = <span class="string">"git@github.com:user/repo.git"</span>
+enabled    = <span class="flag">true</span>
+
+[[sync_targets]]
+provider   = <span class="string">"gitlab"</span>
+remote_url = <span class="string">"git@gitlab.com:user/repo.git"</span>
+enabled    = <span class="flag">true</span></pre>
+    </div>
+
+    <div class="config-card">
+      <div class="config-card-header">
+        <span class="path">~/.copygit/repos.toml</span>
+        <span class="label">Registry</span>
+      </div>
+      <pre><span class="comment"># Tracks all registered repos</span>
+
+version = <span class="string">"1"</span>
+
+[[repos]]
+path          = <span class="string">"/home/user/projects/api"</span>
+alias         = <span class="string">""</span>
+registered_at = <span class="string">"2026-03-01T10:00:00Z"</span>
+last_sync     = <span class="string">"2026-03-06T17:00:00Z"</span>
+
+[[repos]]
+path          = <span class="string">"/home/user/projects/web"</span>
+alias         = <span class="string">""</span>
+registered_at = <span class="string">"2026-03-01T10:05:00Z"</span>
+last_sync     = <span class="string">"2026-03-06T16:55:00Z"</span></pre>
+    </div>
+  </div>
+
+  <h3 style="margin-top: 3rem; font-size: 1.15rem;">Credential Resolution Chain</h3>
+  <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+    CopyGit tries each source in order until it finds a valid credential.
+  </p>
+  <div class="chain">
+    <div class="chain-item">
+      <div class="chain-num">1</div>
+      <div><div class="name">OS Keychain</div><div class="desc">macOS Keychain, Linux Secret Service, Windows Credential Manager</div></div>
+    </div>
+    <div class="chain-item">
+      <div class="chain-num">2</div>
+      <div><div class="name">SSH Keys</div><div class="desc">~/.ssh/id_ed25519, id_rsa, id_ecdsa</div></div>
+    </div>
+    <div class="chain-item">
+      <div class="chain-num">3</div>
+      <div><div class="name">Git Credential Helper</div><div class="desc">git credential-store, git credential-cache, GCM</div></div>
+    </div>
+    <div class="chain-item">
+      <div class="chain-num">4</div>
+      <div><div class="name">Environment Variable</div><div class="desc">COPYGIT_TOKEN_&lt;PROVIDER_NAME&gt;</div></div>
+    </div>
+    <div class="chain-item">
+      <div class="chain-num">5</div>
+      <div><div class="name">Encrypted File</div><div class="desc">~/.copygit/credentials (enforced 0600 permissions)</div></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Installation -->
+<section id="install">
+  <h2 class="section-title">Installation</h2>
+  <p class="section-desc">Multiple ways to get CopyGit.</p>
+
+  <div class="install-grid">
+    <div class="install-card">
+      <h3>Go Install</h3>
+      <pre><span class="cmd">go install</span> github.com/ihsanmokhlisse/copygit/cmd/copygit@latest</pre>
+    </div>
+    <div class="install-card">
+      <h3>From Source</h3>
+      <pre><span class="cmd">git clone</span> https://github.com/ihsanmokhlisse/copygit.git
+<span class="cmd">cd</span> copygit
+<span class="cmd">make build</span>     <span class="comment"># binary at ./bin/copygit</span>
+<span class="cmd">make install</span>   <span class="comment"># installs to $GOPATH/bin</span></pre>
+    </div>
+    <div class="install-card">
+      <h3>Pre-built Binaries</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+        Download from <a href="https://github.com/ihsanmokhlisse/copygit/releases/latest" target="_blank" rel="noopener">GitHub Releases</a>. All binaries are signed with Cosign.
+      </p>
+      <div class="platform-badges">
+        <span class="badge">macOS Intel</span>
+        <span class="badge">macOS Apple Silicon</span>
+        <span class="badge">Linux x86_64</span>
+        <span class="badge">Linux ARM64</span>
+        <span class="badge">Windows x86_64</span>
+        <span class="badge">Windows ARM64</span>
+      </div>
+    </div>
+    <div class="install-card">
+      <h3>Docker</h3>
+      <pre><span class="cmd">docker pull</span> ghcr.io/ihsanmokhlisse/copygit:latest
+
+<span class="cmd">docker run</span> <span class="flag">--rm</span> ghcr.io/ihsanmokhlisse/copygit <span class="flag">--help</span></pre>
+    </div>
+  </div>
+
+  <h3 style="margin-top: 2.5rem; font-size: 1.15rem;">Requirements</h3>
+  <table class="flags-table" style="max-width: 400px;">
+    <tbody>
+      <tr><td>Go</td><td>1.21+</td></tr>
+      <tr><td>Git</td><td>2.x+</td></tr>
+      <tr><td>Platform</td><td>Linux, macOS, Windows</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="divider">
+
+<!-- Architecture -->
+<section id="architecture">
+  <h2 class="section-title">Architecture</h2>
+  <p class="section-desc">Clean layered design with interface-driven components.</p>
+
+  <div class="arch-diagram"><span class="dir">cmd/copygit/</span>           <span class="desc">CLI entry point + Cobra commands</span>
+    <span class="dir">command/</span>           <span class="desc">init, push, sync, status, list, remove, config, hooks, daemon</span>
+
+<span class="dir">internal/</span>
+    <span class="dir">model/</span>             <span class="desc">Domain types (ProviderConfig, Credential, SyncTarget, ConflictInfo)</span>
+    <span class="dir">config/</span>            <span class="desc">TOML config management (global + per-repo + registry)</span>
+    <span class="dir">credential/</span>        <span class="desc">Multi-source credential chain (keyring, SSH, env, file, githelper)</span>
+    <span class="dir">git/</span>               <span class="desc">Git CLI wrapper (executor, remote, branch, tag, status)</span>
+    <span class="dir">provider/</span>          <span class="desc">Provider adapters (GitHub, GitLab, Gitea, generic) with registry</span>
+    <span class="dir">sync/</span>              <span class="desc">Orchestrator for push/fetch operations with conflict detection</span>
+    <span class="dir">output/</span>            <span class="desc">Formatters (text, JSON) for human and machine output</span>
+    <span class="dir">lock/</span>              <span class="desc">Per-repo file locking (flock on Unix, LockFileEx on Windows)</span>
+    <span class="dir">hook/</span>              <span class="desc">Git hook management (marker-based insertion, safe coexistence)</span>
+    <span class="dir">daemon/</span>            <span class="desc">Background polling daemon with PID file management</span></div>
+
+  <div class="features" style="margin-top: 2rem;">
+    <div class="feature-card">
+      <h3>Native Git</h3>
+      <p>Wraps the <code>git</code> CLI via <code>os/exec</code>. No custom protocols, no lock-in. Your repos stay standard Git repos.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Interface-Driven</h3>
+      <p><code>GitExecutor</code>, <code>Provider</code>, <code>CredentialResolver</code>, and <code>Formatter</code> are all interfaces with test fakes.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Per-Repo Locking</h3>
+      <p>File-based locks prevent concurrent syncs on the same repository. Platform-specific: <code>flock</code> on Unix, <code>LockFileEx</code> on Windows.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Footer -->
+<footer>
+  <p>
+    Built by <a href="https://github.com/ihsanmokhlisse" target="_blank" rel="noopener">ihsanmokhlisse</a>
+    &nbsp;&middot;&nbsp;
+    <a href="https://github.com/ihsanmokhlisse/copygit" target="_blank" rel="noopener">Source Code</a>
+    &nbsp;&middot;&nbsp;
+    <a href="https://github.com/ihsanmokhlisse/copygit/releases" target="_blank" rel="noopener">Releases</a>
+  </p>
+  <p style="margin-top: 0.5rem; color: #484f58;">
+    MIT License
+  </p>
+</footer>
+
+</body>
+</html>
