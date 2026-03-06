@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CopyGit - Multi-Provider Git Sync</title>
   <meta name="description" content="Mirror your Git repositories across GitHub, GitLab, Gitea, and any Git server automatically.">
+  <meta name="theme-color" content="#0d1117">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F500;</text></svg>">
   <style>
     :root {
@@ -16,6 +17,7 @@
       --text-muted: #8b949e;
       --accent: #58a6ff;
       --accent-hover: #79c0ff;
+      --accent-glow: rgba(88, 166, 255, 0.15);
       --green: #3fb950;
       --orange: #d29922;
       --purple: #bc8cff;
@@ -26,7 +28,6 @@
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     html { scroll-behavior: smooth; }
 
     body {
@@ -35,10 +36,28 @@
       color: var(--text);
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
     a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
     a:hover { color: var(--accent-hover); }
+    code { font-family: var(--mono); font-size: 0.875em; background: var(--bg-secondary); padding: 0.15em 0.4em; border-radius: 4px; }
+
+    /* ─── Scroll Reveal ──────────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+    .reveal-delay-5 { transition-delay: 0.5s; }
 
     /* ─── Navigation ─────────────────────────────────────────────── */
     nav {
@@ -46,47 +65,70 @@
       top: 0;
       left: 0;
       right: 0;
-      z-index: 100;
-      background: rgba(13, 17, 23, 0.85);
-      backdrop-filter: blur(12px);
+      z-index: 1000;
+      background: rgba(13, 17, 23, 0.8);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
-      padding: 0 2rem;
+      transition: background 0.3s;
     }
 
-    nav .nav-inner {
+    nav.scrolled {
+      background: rgba(13, 17, 23, 0.95);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .nav-inner {
       max-width: 1200px;
       margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
       height: 60px;
+      padding: 0 2rem;
     }
 
-    nav .logo {
+    .logo {
       font-size: 1.25rem;
       font-weight: 700;
       color: var(--text);
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      z-index: 1001;
     }
+    .logo span { color: var(--accent); }
 
-    nav .logo span { color: var(--accent); }
-
-    nav .nav-links {
+    .nav-links {
       display: flex;
       gap: 1.5rem;
       list-style: none;
+      align-items: center;
     }
 
-    nav .nav-links a {
+    .nav-links a {
       color: var(--text-muted);
       font-size: 0.9rem;
       font-weight: 500;
       transition: color 0.2s;
+      position: relative;
     }
 
-    nav .nav-links a:hover { color: var(--text); }
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--accent);
+      transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .nav-links a:hover,
+    .nav-links a.active { color: var(--text); }
+    .nav-links a.active::after,
+    .nav-links a:hover::after { width: 100%; }
 
     .github-link {
       display: flex;
@@ -98,37 +140,166 @@
       border-radius: 6px;
       font-size: 0.85rem;
       color: var(--text-muted);
-      transition: border-color 0.2s, color 0.2s;
+      transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
     }
 
     .github-link:hover {
       border-color: var(--accent);
       color: var(--text);
+      box-shadow: 0 0 12px var(--accent-glow);
     }
+
+    /* Hamburger */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      z-index: 1001;
+      padding: 4px;
+      background: none;
+      border: none;
+    }
+
+    .hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text);
+      border-radius: 2px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+
+    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* Mobile overlay */
+    .mobile-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 17, 23, 0.97);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .mobile-overlay.open {
+      display: flex;
+      opacity: 1;
+    }
+
+    .mobile-overlay a {
+      color: var(--text);
+      font-size: 1.5rem;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .mobile-overlay a:hover { color: var(--accent); }
 
     /* ─── Hero ───────────────────────────────────────────────────── */
     .hero {
-      padding: 10rem 2rem 6rem;
+      position: relative;
+      padding: 12rem 2rem 7rem;
       text-align: center;
-      background: radial-gradient(ellipse at 50% 0%, rgba(88, 166, 255, 0.08) 0%, transparent 60%);
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(88, 166, 255, 0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 70% 20%, rgba(188, 140, 255, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 40% at 30% 30%, rgba(63, 185, 80, 0.04) 0%, transparent 50%);
+      z-index: 0;
+    }
+
+    /* Animated grid lines */
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(88, 166, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(88, 166, 255, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
+      -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
+      z-index: 0;
+    }
+
+    .hero > * { position: relative; z-index: 1; }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      padding: 0.4rem 1rem;
+      border-radius: 100px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      animation: fadeInDown 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .hero-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(63, 185, 80, 0); }
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .hero h1 {
-      font-size: 3.5rem;
+      font-size: clamp(2.5rem, 6vw, 4rem);
       font-weight: 800;
-      letter-spacing: -0.03em;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
       margin-bottom: 1.5rem;
-      background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+      background: linear-gradient(135deg, var(--text) 0%, var(--accent) 50%, var(--purple) 100%);
+      background-size: 200% 200%;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both, gradientShift 8s ease-in-out infinite;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
     }
 
     .hero .subtitle {
-      font-size: 1.25rem;
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
       color: var(--text-muted);
-      max-width: 600px;
+      max-width: 550px;
       margin: 0 auto 2.5rem;
+      animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
     }
 
     .hero-buttons {
@@ -136,29 +307,33 @@
       gap: 1rem;
       justify-content: center;
       flex-wrap: wrap;
+      animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
     }
 
     .btn {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      border-radius: 8px;
+      padding: 0.8rem 1.75rem;
+      border-radius: 10px;
       font-weight: 600;
       font-size: 0.95rem;
-      transition: all 0.2s;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       border: 1px solid transparent;
+      cursor: pointer;
     }
 
     .btn-primary {
       background: var(--accent);
       color: #fff;
+      box-shadow: 0 4px 16px rgba(88, 166, 255, 0.25);
     }
 
     .btn-primary:hover {
       background: var(--accent-hover);
       color: #fff;
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(88, 166, 255, 0.35);
     }
 
     .btn-secondary {
@@ -169,41 +344,141 @@
 
     .btn-secondary:hover {
       border-color: var(--accent);
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(88, 166, 255, 0.1);
     }
 
     .hero-install {
       margin-top: 3rem;
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
       background: var(--bg-secondary);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.75rem 1.5rem;
+      border-radius: 10px;
+      padding: 0.8rem 1.25rem;
       font-family: var(--mono);
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: var(--text-muted);
+      animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
 
-    .hero-install code { color: var(--green); }
+    .hero-install:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .hero-install code { color: var(--green); background: none; padding: 0; }
+
+    .copy-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .hero-install:hover .copy-hint { opacity: 1; }
+
+    /* ─── How It Works ───────────────────────────────────────────── */
+    .flow-diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 2rem 0;
+      flex-wrap: wrap;
+    }
+
+    .flow-node {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      text-align: center;
+      min-width: 160px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .flow-node:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 24px var(--accent-glow);
+    }
+
+    .flow-node.primary {
+      border-color: var(--accent);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .flow-node .label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .flow-node .name {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 0.5rem;
+      color: var(--accent);
+      font-size: 1.5rem;
+      animation: arrowPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes arrowPulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    .flow-targets {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .flow-targets .flow-node {
+      padding: 0.75rem 1.5rem;
+      min-width: 120px;
+    }
+
+    .flow-targets .flow-node .name { font-size: 0.95rem; }
 
     /* ─── Sections ───────────────────────────────────────────────── */
     section {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 5rem 2rem;
+      padding: 6rem 2rem;
+    }
+
+    .section-header { margin-bottom: 3.5rem; }
+
+    .section-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
     }
 
     .section-title {
-      font-size: 2rem;
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
       font-weight: 700;
-      margin-bottom: 0.75rem;
       letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
     }
 
     .section-desc {
       color: var(--text-muted);
       font-size: 1.1rem;
-      margin-bottom: 3rem;
       max-width: 600px;
     }
 
@@ -211,76 +486,58 @@
     .features {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
+      gap: 1.25rem;
     }
 
     .feature-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.75rem;
-      transition: border-color 0.2s, transform 0.2s;
+      border-radius: 14px;
+      padding: 2rem;
+      transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
     }
 
     .feature-card:hover {
       border-color: var(--accent);
-      transform: translateY(-2px);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 24px var(--accent-glow);
     }
 
     .feature-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.25rem;
-      margin-bottom: 1rem;
+      font-size: 1.3rem;
+      margin-bottom: 1.25rem;
     }
 
-    .feature-card h3 {
-      font-size: 1.1rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .feature-card p {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      line-height: 1.6;
-    }
+    .feature-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .feature-card p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.65; }
 
     /* ─── Code Blocks ────────────────────────────────────────────── */
     .code-section {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 2rem;
+      gap: 3rem;
       align-items: start;
-    }
-
-    .code-info h3 {
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .code-info p {
-      color: var(--text-muted);
-      margin-bottom: 1.5rem;
-      line-height: 1.7;
     }
 
     .code-info .step {
       display: flex;
       align-items: flex-start;
       gap: 1rem;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
     }
 
     .step-num {
       flex-shrink: 0;
-      width: 28px;
-      height: 28px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
-      background: var(--accent);
+      background: linear-gradient(135deg, var(--accent), var(--purple));
       color: #fff;
       display: flex;
       align-items: center;
@@ -288,37 +545,53 @@
       font-size: 0.8rem;
       font-weight: 700;
       margin-top: 2px;
+      box-shadow: 0 2px 8px rgba(88, 166, 255, 0.3);
     }
 
     .step-text { font-size: 0.95rem; color: var(--text-muted); }
     .step-text strong { color: var(--text); }
 
+    .code-block-wrapper {
+      position: relative;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font);
+      z-index: 2;
+    }
+
+    .copy-btn:hover { border-color: var(--accent); color: var(--text); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
     pre {
       background: var(--code-bg);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1.25rem 1.5rem;
+      border-radius: 12px;
+      padding: 1.5rem;
       overflow-x: auto;
       font-family: var(--mono);
-      font-size: 0.875rem;
-      line-height: 1.7;
+      font-size: 0.85rem;
+      line-height: 1.8;
     }
 
-    pre .comment { color: var(--text-muted); }
+    pre .comment { color: #6e7681; }
     pre .cmd { color: var(--green); }
     pre .flag { color: var(--orange); }
     pre .string { color: var(--accent); }
-    pre .output { color: var(--text-muted); }
 
-    /* ─── Commands Table ─────────────────────────────────────────── */
-    .commands-grid {
-      display: grid;
-      gap: 0;
-    }
-
-    .cmd-group {
-      margin-bottom: 2rem;
-    }
+    /* ─── Commands ────────────────────────────────────────────────── */
+    .cmd-group { margin-bottom: 2.5rem; }
 
     .cmd-group-title {
       font-size: 0.8rem;
@@ -326,8 +599,8 @@
       text-transform: uppercase;
       letter-spacing: 0.1em;
       color: var(--accent);
-      margin-bottom: 0.75rem;
-      padding-left: 0.25rem;
+      margin-bottom: 1rem;
+      padding-left: 0.5rem;
     }
 
     .cmd-table {
@@ -336,7 +609,7 @@
     }
 
     .cmd-table td {
-      padding: 0.6rem 0.75rem;
+      padding: 0.75rem 1rem;
       border-bottom: 1px solid var(--border);
       font-size: 0.9rem;
       vertical-align: top;
@@ -346,15 +619,23 @@
       font-family: var(--mono);
       font-size: 0.85rem;
       color: var(--green);
-      white-space: nowrap;
       width: 40%;
     }
 
-    .cmd-table td:last-child {
-      color: var(--text-muted);
+    .cmd-table td:last-child { color: var(--text-muted); }
+    .cmd-table tr:last-child td { border-bottom: none; }
+    .cmd-table tr { transition: background 0.15s; }
+    .cmd-table tr:hover { background: rgba(88, 166, 255, 0.03); }
+
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
     }
 
-    .cmd-table tr:last-child td { border-bottom: none; }
+    .table-scroll .cmd-table td { white-space: nowrap; }
 
     /* ─── Flags ──────────────────────────────────────────────────── */
     .flags-table {
@@ -365,7 +646,7 @@
 
     .flags-table th {
       text-align: left;
-      padding: 0.75rem;
+      padding: 0.75rem 1rem;
       border-bottom: 2px solid var(--border);
       font-size: 0.8rem;
       text-transform: uppercase;
@@ -374,20 +655,15 @@
     }
 
     .flags-table td {
-      padding: 0.6rem 0.75rem;
+      padding: 0.65rem 1rem;
       border-bottom: 1px solid var(--border);
       font-size: 0.9rem;
     }
 
-    .flags-table td:first-child {
-      font-family: var(--mono);
-      color: var(--orange);
-      white-space: nowrap;
-    }
-
+    .flags-table td:first-child { font-family: var(--mono); color: var(--orange); white-space: nowrap; }
     .flags-table td:last-child { color: var(--text-muted); }
 
-    /* ─── Config Section ─────────────────────────────────────────── */
+    /* ─── Config Cards ───────────────────────────────────────────── */
     .config-cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -397,65 +673,59 @@
     .config-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 14px;
       overflow: hidden;
+      transition: border-color 0.3s;
     }
 
+    .config-card:hover { border-color: rgba(88, 166, 255, 0.3); }
+
     .config-card-header {
-      padding: 1rem 1.25rem;
+      padding: 1rem 1.5rem;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       gap: 0.75rem;
     }
 
-    .config-card-header .path {
-      font-family: var(--mono);
-      font-size: 0.85rem;
-      color: var(--accent);
-    }
+    .config-card-header .path { font-family: var(--mono); font-size: 0.85rem; color: var(--accent); }
 
     .config-card-header .label {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
       color: var(--text-muted);
       background: var(--bg);
-      padding: 0.15rem 0.5rem;
+      padding: 0.2rem 0.6rem;
       border-radius: 4px;
     }
 
-    .config-card pre {
-      border: none;
-      border-radius: 0;
-      margin: 0;
-    }
+    .config-card pre { border: none; border-radius: 0; margin: 0; }
 
     /* ─── Credential Chain ───────────────────────────────────────── */
-    .chain {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      max-width: 600px;
-    }
+    .chain { display: flex; flex-direction: column; max-width: 600px; }
 
     .chain-item {
       display: flex;
       align-items: center;
       gap: 1rem;
-      padding: 1rem 1.25rem;
+      padding: 1rem 1.5rem;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      position: relative;
+      transition: border-color 0.2s, background 0.2s;
     }
 
-    .chain-item:first-child { border-radius: 10px 10px 0 0; }
-    .chain-item:last-child { border-radius: 0 0 10px 10px; }
+    .chain-item:first-child { border-radius: 12px 12px 0 0; }
+    .chain-item:last-child { border-radius: 0 0 12px 12px; }
     .chain-item:not(:last-child) { border-bottom: none; }
+    .chain-item:hover { border-color: var(--accent); background: rgba(88, 166, 255, 0.03); }
 
     .chain-num {
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
-      background: var(--accent);
+      background: linear-gradient(135deg, var(--accent), var(--purple));
       color: #fff;
       font-size: 0.75rem;
       font-weight: 700;
@@ -472,32 +742,34 @@
     .arch-diagram {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 2rem;
       font-family: var(--mono);
       font-size: 0.85rem;
-      line-height: 1.8;
+      line-height: 1.9;
       overflow-x: auto;
       white-space: pre;
       color: var(--text-muted);
     }
 
     .arch-diagram .dir { color: var(--accent); font-weight: 600; }
-    .arch-diagram .desc { color: var(--text-muted); }
 
-    /* ─── Install Section ────────────────────────────────────────── */
+    /* ─── Install Grid ───────────────────────────────────────────── */
     .install-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 1.5rem;
     }
 
     .install-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.75rem;
+      border-radius: 14px;
+      padding: 2rem;
+      transition: border-color 0.3s;
     }
+
+    .install-card:hover { border-color: rgba(88, 166, 255, 0.3); }
 
     .install-card h3 {
       font-size: 1rem;
@@ -507,48 +779,21 @@
       gap: 0.5rem;
     }
 
-    .install-card pre {
-      margin: 0;
-      font-size: 0.85rem;
-    }
+    .install-card pre { margin: 0; font-size: 0.85rem; }
 
-    .platform-badges {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-top: 1rem;
-    }
+    .platform-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
 
     .badge {
       background: var(--bg);
       border: 1px solid var(--border);
-      padding: 0.25rem 0.6rem;
+      padding: 0.3rem 0.7rem;
       border-radius: 6px;
       font-size: 0.75rem;
       color: var(--text-muted);
+      transition: border-color 0.2s, color 0.2s;
     }
 
-    /* ─── Footer ─────────────────────────────────────────────────── */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 3rem 2rem;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
-
-    footer a { color: var(--text-muted); }
-    footer a:hover { color: var(--accent); }
-
-    /* ─── Responsive ─────────────────────────────────────────────── */
-    @media (max-width: 768px) {
-      .hero h1 { font-size: 2.25rem; }
-      .hero .subtitle { font-size: 1rem; }
-      .code-section { grid-template-columns: 1fr; }
-      nav .nav-links { display: none; }
-      .hero { padding: 8rem 1.5rem 4rem; }
-      section { padding: 3rem 1.5rem; }
-    }
+    .badge:hover { border-color: var(--accent); color: var(--text); }
 
     /* ─── Divider ────────────────────────────────────────────────── */
     .divider {
@@ -556,6 +801,88 @@
       border-top: 1px solid var(--border);
       max-width: 1200px;
       margin: 0 auto;
+    }
+
+    /* ─── Footer ─────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 4rem 2rem;
+      background: var(--bg-secondary);
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 3rem;
+    }
+
+    .footer-brand .logo { margin-bottom: 1rem; }
+    .footer-brand p { color: var(--text-muted); font-size: 0.9rem; max-width: 280px; line-height: 1.6; }
+
+    .footer-col h4 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .footer-col ul { list-style: none; }
+    .footer-col li { margin-bottom: 0.6rem; }
+    .footer-col a { color: var(--text-muted); font-size: 0.9rem; transition: color 0.2s; }
+    .footer-col a:hover { color: var(--accent); }
+
+    .footer-bottom {
+      max-width: 1200px;
+      margin: 2.5rem auto 0;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #484f58;
+      font-size: 0.8rem;
+    }
+
+    /* ─── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 1024px) {
+      .flow-diagram { gap: 0.5rem; }
+      .flow-node { min-width: 130px; padding: 1rem 1.25rem; }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+      .github-link { display: none; }
+
+      .hero { padding: 9rem 1.5rem 5rem; }
+      section { padding: 4rem 1.5rem; }
+      .code-section { grid-template-columns: 1fr; gap: 2rem; }
+      .features { grid-template-columns: 1fr; }
+      .config-cards { grid-template-columns: 1fr; }
+      .install-grid { grid-template-columns: 1fr; }
+
+      .flow-diagram { flex-direction: column; }
+      .flow-arrow { transform: rotate(90deg); padding: 0.25rem 0; }
+      .flow-targets { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+
+      .cmd-table td:first-child { white-space: normal; word-break: break-all; }
+
+      .footer-inner { grid-template-columns: 1fr 1fr; gap: 2rem; }
+      .footer-brand { grid-column: 1 / -1; }
+      .footer-bottom { flex-direction: column; gap: 0.5rem; text-align: center; }
+    }
+
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 2rem; }
+      .hero-install { font-size: 0.75rem; padding: 0.6rem 1rem; }
+      .hero-install code { word-break: break-all; }
+      .footer-inner { grid-template-columns: 1fr; }
+      .step { flex-direction: column; gap: 0.5rem; }
+      .step-num { margin-top: 0; }
     }
   </style>
 </head>
@@ -567,21 +894,41 @@
     <div class="logo">Copy<span>Git</span></div>
     <ul class="nav-links">
       <li><a href="#features">Features</a></li>
+      <li><a href="#how-it-works">How It Works</a></li>
       <li><a href="#quickstart">Quick Start</a></li>
       <li><a href="#commands">Commands</a></li>
-      <li><a href="#config">Configuration</a></li>
-      <li><a href="#install">Installation</a></li>
-      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#config">Config</a></li>
+      <li><a href="#install">Install</a></li>
     </ul>
     <a href="https://github.com/ihsanmokhlisse/copygit" class="github-link" target="_blank" rel="noopener">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
       GitHub
     </a>
+    <button class="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </nav>
 
+<!-- Mobile Overlay -->
+<div class="mobile-overlay">
+  <a href="#features">Features</a>
+  <a href="#how-it-works">How It Works</a>
+  <a href="#quickstart">Quick Start</a>
+  <a href="#commands">Commands</a>
+  <a href="#config">Configuration</a>
+  <a href="#install">Installation</a>
+  <a href="https://github.com/ihsanmokhlisse/copygit" target="_blank" rel="noopener">GitHub</a>
+</div>
+
 <!-- Hero -->
 <section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-badge">
+    <span class="dot"></span>
+    v0.1.0 &mdash; Now available
+  </div>
   <h1>Mirror your repos.<br>Everywhere.</h1>
   <p class="subtitle">
     Push once to GitHub, GitLab, Gitea, and any Git server simultaneously.
@@ -589,10 +936,14 @@
   </p>
   <div class="hero-buttons">
     <a href="#quickstart" class="btn btn-primary">Get Started</a>
-    <a href="https://github.com/ihsanmokhlisse/copygit/releases/latest" class="btn btn-secondary" target="_blank" rel="noopener">Download</a>
+    <a href="https://github.com/ihsanmokhlisse/copygit/releases/latest" class="btn btn-secondary" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2.75 14A1.75 1.75 0 011 12.25v-2.5a.75.75 0 011.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 00.25-.25v-2.5a.75.75 0 011.5 0v2.5A1.75 1.75 0 0113.25 14H2.75z"/><path d="M7.25 7.689V2a.75.75 0 011.5 0v5.689l1.97-1.969a.749.749 0 111.06 1.06l-3.25 3.25a.749.749 0 01-1.06 0L4.22 6.78a.749.749 0 111.06-1.06l1.97 1.969z"/></svg>
+      Download
+    </a>
   </div>
-  <div class="hero-install">
-    <code>$ go install github.com/ihsanmokhlisse/copygit/cmd/copygit@latest</code>
+  <div class="hero-install" onclick="copyInstall(this)">
+    <code>go install github.com/ihsanmokhlisse/copygit/cmd/copygit@latest</code>
+    <span class="copy-hint">click to copy</span>
   </div>
 </section>
 
@@ -600,35 +951,38 @@
 
 <!-- Features -->
 <section id="features">
-  <h2 class="section-title">Features</h2>
-  <p class="section-desc">Everything you need to keep your code mirrored and safe.</p>
+  <div class="section-header reveal">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Everything you need to keep your code safe</h2>
+    <p class="section-desc">Built for developers who value redundancy and automation.</p>
+  </div>
   <div class="features">
-    <div class="feature-card">
+    <div class="feature-card reveal reveal-delay-1">
       <div class="feature-icon" style="background: rgba(88, 166, 255, 0.1); color: var(--accent);">&#x2194;</div>
       <h3>Multi-Provider Sync</h3>
       <p>Push to GitHub, GitLab, Gitea, and generic Git servers simultaneously with a single command.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card reveal reveal-delay-2">
       <div class="feature-icon" style="background: rgba(63, 185, 80, 0.1); color: var(--green);">&#x1F512;</div>
       <h3>Secure Credentials</h3>
-      <p>OS keychain, SSH keys, git helpers, environment variables, or encrypted file. Tokens never stored in plaintext config.</p>
+      <p>OS keychain, SSH keys, git helpers, environment variables, or encrypted file. Tokens never stored in plaintext.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card reveal reveal-delay-3">
       <div class="feature-icon" style="background: rgba(210, 153, 34, 0.1); color: var(--orange);">&#x26A1;</div>
       <h3>Auto-Sync Hooks</h3>
-      <p>Install a post-push hook and every <code>git push</code> automatically mirrors to all providers. No extra commands.</p>
+      <p>Install a post-push hook and every <code>git push</code> automatically mirrors to all providers.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card reveal reveal-delay-1">
       <div class="feature-icon" style="background: rgba(188, 140, 255, 0.1); color: var(--purple);">&#x1F4E6;</div>
       <h3>Multi-Repo Management</h3>
       <p>Register dozens of repositories and push them all at once with <code>copygit push --all</code>.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card reveal reveal-delay-2">
       <div class="feature-icon" style="background: rgba(248, 81, 73, 0.1); color: var(--red);">&#x26A0;</div>
       <h3>Conflict Detection</h3>
       <p>Detects diverged branches with ahead/behind counts. Warn, merge, or force-push strategies.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card reveal reveal-delay-3">
       <div class="feature-icon" style="background: rgba(88, 166, 255, 0.1); color: var(--accent);">&#x1F916;</div>
       <h3>Background Daemon</h3>
       <p>Continuous polling-based sync runs in the background. Start, stop, and check status anytime.</p>
@@ -638,34 +992,87 @@
 
 <hr class="divider">
 
+<!-- How It Works -->
+<section id="how-it-works">
+  <div class="section-header reveal">
+    <div class="section-label">How It Works</div>
+    <h2 class="section-title">Native Git, no lock-in</h2>
+    <p class="section-desc">CopyGit wraps standard Git commands. Your repos stay normal Git repos.</p>
+  </div>
+  <div class="flow-diagram reveal">
+    <div class="flow-node primary">
+      <div class="label">Local</div>
+      <div class="name">Your Repo</div>
+    </div>
+    <div class="flow-arrow">
+      <svg width="40" height="24" viewBox="0 0 40 24" fill="none"><path d="M0 12H36M36 12L28 4M36 12L28 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="flow-targets">
+      <div class="flow-node">
+        <div class="name" style="color: var(--text);">GitHub</div>
+      </div>
+      <div class="flow-node">
+        <div class="name" style="color: var(--orange);">GitLab</div>
+      </div>
+      <div class="flow-node">
+        <div class="name" style="color: var(--green);">Gitea</div>
+      </div>
+      <div class="flow-node">
+        <div class="name" style="color: var(--purple);">Generic</div>
+      </div>
+    </div>
+  </div>
+  <div class="features" style="margin-top: 2.5rem;">
+    <div class="feature-card reveal reveal-delay-1">
+      <h3>Push</h3>
+      <p><code>copygit push</code> sends all branches and tags to every configured provider in parallel.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
+      <h3>Sync</h3>
+      <p><code>copygit sync</code> fetches from all remotes first, detects conflicts, then pushes.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-3">
+      <h3>Automate</h3>
+      <p><code>copygit hooks install</code> mirrors every <code>git push</code> automatically via post-push hooks.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
 <!-- Quick Start -->
 <section id="quickstart">
-  <h2 class="section-title">Quick Start</h2>
-  <p class="section-desc">Get mirroring in under a minute.</p>
+  <div class="section-header reveal">
+    <div class="section-label">Quick Start</div>
+    <h2 class="section-title">Mirroring in under a minute</h2>
+    <p class="section-desc">Five steps from install to automatic sync.</p>
+  </div>
   <div class="code-section">
     <div class="code-info">
-      <div class="step">
+      <div class="step reveal reveal-delay-1">
         <div class="step-num">1</div>
         <div class="step-text"><strong>Add your providers</strong> &mdash; Define where you want to mirror. GitHub, GitLab, Gitea, or any Git server.</div>
       </div>
-      <div class="step">
+      <div class="step reveal reveal-delay-2">
         <div class="step-num">2</div>
         <div class="step-text"><strong>Authenticate</strong> &mdash; Store credentials securely. Tokens are hidden and stored in your OS keychain.</div>
       </div>
-      <div class="step">
+      <div class="step reveal reveal-delay-3">
         <div class="step-num">3</div>
-        <div class="step-text"><strong>Register a repo</strong> &mdash; Point CopyGit at any local Git repository and select which providers to sync.</div>
+        <div class="step-text"><strong>Register a repo</strong> &mdash; Point CopyGit at any local Git repository and select providers.</div>
       </div>
-      <div class="step">
+      <div class="step reveal reveal-delay-4">
         <div class="step-num">4</div>
-        <div class="step-text"><strong>Push everywhere</strong> &mdash; One command mirrors your code to all configured providers.</div>
+        <div class="step-text"><strong>Push everywhere</strong> &mdash; One command mirrors to all configured providers.</div>
       </div>
-      <div class="step">
+      <div class="step reveal reveal-delay-5">
         <div class="step-num">5</div>
         <div class="step-text"><strong>Automate it</strong> &mdash; Install a hook so every <code>git push</code> mirrors automatically.</div>
       </div>
     </div>
-    <pre><span class="comment"># Add providers</span>
+    <div class="code-block-wrapper reveal">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="comment"># Add providers</span>
 <span class="cmd">copygit config add-provider</span> <span class="string">github</span> github https://github.com
 <span class="cmd">copygit config add-provider</span> <span class="string">gitlab</span> gitlab https://gitlab.com
 
@@ -682,6 +1089,7 @@ cd ~/projects/my-app
 
 <span class="comment"># Auto-sync on every git push</span>
 <span class="cmd">copygit hooks install</span></pre>
+    </div>
   </div>
 </section>
 
@@ -689,74 +1097,90 @@ cd ~/projects/my-app
 
 <!-- Commands -->
 <section id="commands">
-  <h2 class="section-title">Commands</h2>
-  <p class="section-desc">Full CLI reference.</p>
+  <div class="section-header reveal">
+    <div class="section-label">CLI Reference</div>
+    <h2 class="section-title">Commands</h2>
+    <p class="section-desc">Full command reference with all flags and options.</p>
+  </div>
 
-  <div class="commands-grid">
+  <div class="reveal">
     <div class="cmd-group">
       <div class="cmd-group-title">Core</div>
-      <table class="cmd-table">
-        <tr><td>copygit init &lt;path&gt;</td><td>Register a repo for syncing. Auto-detects remotes, prompts for provider selection, creates <code>.copygit.toml</code>.</td></tr>
-        <tr><td>copygit push [path]</td><td>Push branches and tags to all configured providers. Use <code>--all</code> for all repos, <code>--dry-run</code> to preview.</td></tr>
-        <tr><td>copygit sync [path]</td><td>Full bidirectional sync: fetch all remotes, detect conflicts, then push. Use <code>--force</code> to push despite divergence.</td></tr>
-        <tr><td>copygit status [path]</td><td>Show sync state per provider (in-sync, ahead, behind). Use <code>--all</code> for all repos.</td></tr>
-        <tr><td>copygit list</td><td>List all registered repositories with their last sync time.</td></tr>
-        <tr><td>copygit remove &lt;path&gt;</td><td>Unregister a repo. Use <code>--clean</code> to also delete <code>.copygit.toml</code>.</td></tr>
-      </table>
+      <div class="table-scroll">
+        <table class="cmd-table">
+          <tr><td>copygit init &lt;path&gt;</td><td>Register a repo for syncing. Auto-detects remotes, prompts for provider selection, creates <code>.copygit.toml</code>.</td></tr>
+          <tr><td>copygit push [path]</td><td>Push branches and tags to all configured providers. Use <code>--all</code> for all repos, <code>--dry-run</code> to preview.</td></tr>
+          <tr><td>copygit sync [path]</td><td>Full bidirectional sync: fetch all remotes, detect conflicts, then push. Use <code>--force</code> to push despite divergence.</td></tr>
+          <tr><td>copygit status [path]</td><td>Show sync state per provider (in-sync, ahead, behind). Use <code>--all</code> for all repos.</td></tr>
+          <tr><td>copygit list</td><td>List all registered repositories with their last sync time.</td></tr>
+          <tr><td>copygit remove &lt;path&gt;</td><td>Unregister a repo. Use <code>--clean</code> to also delete <code>.copygit.toml</code>.</td></tr>
+        </table>
+      </div>
     </div>
 
     <div class="cmd-group">
       <div class="cmd-group-title">Configuration</div>
-      <table class="cmd-table">
-        <tr><td>copygit config add-provider &lt;name&gt; &lt;type&gt; &lt;url&gt;</td><td>Add a provider. Types: <code>github</code>, <code>gitlab</code>, <code>gitea</code>, <code>generic</code>.</td></tr>
-        <tr><td>copygit config list-providers</td><td>Show all configured providers and their auth methods.</td></tr>
-        <tr><td>copygit config remove-provider &lt;name&gt;</td><td>Remove a provider from the global configuration.</td></tr>
-        <tr><td>copygit login --provider &lt;name&gt;</td><td>Authenticate with a provider. Interactive token prompt (hidden input). Validates before storing.</td></tr>
-      </table>
+      <div class="table-scroll">
+        <table class="cmd-table">
+          <tr><td>copygit config add-provider &lt;name&gt; &lt;type&gt; &lt;url&gt;</td><td>Add a provider. Types: <code>github</code>, <code>gitlab</code>, <code>gitea</code>, <code>generic</code>.</td></tr>
+          <tr><td>copygit config list-providers</td><td>Show all configured providers and their auth methods.</td></tr>
+          <tr><td>copygit config remove-provider &lt;name&gt;</td><td>Remove a provider from the global configuration.</td></tr>
+          <tr><td>copygit login --provider &lt;name&gt;</td><td>Authenticate with a provider. Interactive token prompt (hidden input). Validates before storing.</td></tr>
+        </table>
+      </div>
     </div>
 
     <div class="cmd-group">
       <div class="cmd-group-title">Automation</div>
-      <table class="cmd-table">
-        <tr><td>copygit hooks install [path]</td><td>Install a post-push hook that mirrors on every <code>git push</code>.</td></tr>
-        <tr><td>copygit hooks uninstall [path]</td><td>Remove CopyGit's hook from the repo. Safe: preserves other hooks.</td></tr>
-        <tr><td>copygit hooks status [path]</td><td>Show whether the auto-sync hook is installed.</td></tr>
-        <tr><td>copygit daemon start</td><td>Start background sync daemon. Polls all repos at a configurable interval (default: 30s).</td></tr>
-        <tr><td>copygit daemon stop</td><td>Stop the running daemon via PID file signal.</td></tr>
-        <tr><td>copygit daemon status</td><td>Check if the daemon is running.</td></tr>
-      </table>
+      <div class="table-scroll">
+        <table class="cmd-table">
+          <tr><td>copygit hooks install [path]</td><td>Install a post-push hook that mirrors on every <code>git push</code>.</td></tr>
+          <tr><td>copygit hooks uninstall [path]</td><td>Remove CopyGit's hook. Safe: preserves other hooks.</td></tr>
+          <tr><td>copygit hooks status [path]</td><td>Show whether the auto-sync hook is installed.</td></tr>
+          <tr><td>copygit daemon start</td><td>Start background sync daemon. Polls repos at a configurable interval (default: 30s).</td></tr>
+          <tr><td>copygit daemon stop</td><td>Stop the running daemon via PID file signal.</td></tr>
+          <tr><td>copygit daemon status</td><td>Check if the daemon is running.</td></tr>
+        </table>
+      </div>
     </div>
   </div>
 
-  <h3 style="margin-top: 2.5rem; font-size: 1.15rem;">Global Flags</h3>
-  <table class="flags-table">
-    <thead>
-      <tr><th>Flag</th><th>Description</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>-c, --config &lt;path&gt;</td><td>Override config file path</td></tr>
-      <tr><td>-j, --json</td><td>Machine-readable JSON output</td></tr>
-      <tr><td>-v, --verbose</td><td>Debug-level logging</td></tr>
-      <tr><td>-q, --quiet</td><td>Suppress non-error output</td></tr>
-      <tr><td>--output text|json</td><td>Output format for push, sync, status, list commands</td></tr>
-    </tbody>
-  </table>
+  <div class="reveal" style="margin-top: 2.5rem;">
+    <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem;">Global Flags</h3>
+    <div class="table-scroll">
+      <table class="flags-table">
+        <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>-c, --config &lt;path&gt;</td><td>Override config file path</td></tr>
+          <tr><td>-j, --json</td><td>Machine-readable JSON output</td></tr>
+          <tr><td>-v, --verbose</td><td>Debug-level logging</td></tr>
+          <tr><td>-q, --quiet</td><td>Suppress non-error output</td></tr>
+          <tr><td>--output text|json</td><td>Output format for push, sync, status, list commands</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </section>
 
 <hr class="divider">
 
 <!-- Configuration -->
 <section id="config">
-  <h2 class="section-title">Configuration</h2>
-  <p class="section-desc">Three files, clean separation of concerns.</p>
+  <div class="section-header reveal">
+    <div class="section-label">Configuration</div>
+    <h2 class="section-title">Three files, clean separation</h2>
+    <p class="section-desc">Global providers, per-repo targets, and a repo registry.</p>
+  </div>
 
   <div class="config-cards">
-    <div class="config-card">
+    <div class="config-card reveal reveal-delay-1">
       <div class="config-card-header">
         <span class="path">~/.copygit/config</span>
         <span class="label">Global</span>
       </div>
-      <pre><span class="comment"># Provider definitions (shared across all repos)</span>
+      <div class="code-block-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Provider definitions (shared across all repos)</span>
 
 [providers.github]
 name       = <span class="string">"github"</span>
@@ -773,14 +1197,17 @@ auth_method = <span class="string">"token"</span>
 
 [daemon]
 poll_interval = <span class="string">"30s"</span></pre>
+      </div>
     </div>
 
-    <div class="config-card">
+    <div class="config-card reveal reveal-delay-2">
       <div class="config-card-header">
         <span class="path">&lt;repo&gt;/.copygit.toml</span>
         <span class="label">Per-repo</span>
       </div>
-      <pre><span class="comment"># Which providers this repo syncs to</span>
+      <div class="code-block-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Which providers this repo syncs to</span>
 
 version = <span class="string">"1"</span>
 
@@ -793,14 +1220,17 @@ enabled    = <span class="flag">true</span>
 provider   = <span class="string">"gitlab"</span>
 remote_url = <span class="string">"git@gitlab.com:user/repo.git"</span>
 enabled    = <span class="flag">true</span></pre>
+      </div>
     </div>
 
-    <div class="config-card">
+    <div class="config-card reveal reveal-delay-3">
       <div class="config-card-header">
         <span class="path">~/.copygit/repos.toml</span>
         <span class="label">Registry</span>
       </div>
-      <pre><span class="comment"># Tracks all registered repos</span>
+      <div class="code-block-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Tracks all registered repos</span>
 
 version = <span class="string">"1"</span>
 
@@ -808,40 +1238,37 @@ version = <span class="string">"1"</span>
 path          = <span class="string">"/home/user/projects/api"</span>
 alias         = <span class="string">""</span>
 registered_at = <span class="string">"2026-03-01T10:00:00Z"</span>
-last_sync     = <span class="string">"2026-03-06T17:00:00Z"</span>
-
-[[repos]]
-path          = <span class="string">"/home/user/projects/web"</span>
-alias         = <span class="string">""</span>
-registered_at = <span class="string">"2026-03-01T10:05:00Z"</span>
-last_sync     = <span class="string">"2026-03-06T16:55:00Z"</span></pre>
+last_sync     = <span class="string">"2026-03-06T17:00:00Z"</span></pre>
+      </div>
     </div>
   </div>
 
-  <h3 style="margin-top: 3rem; font-size: 1.15rem;">Credential Resolution Chain</h3>
-  <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
-    CopyGit tries each source in order until it finds a valid credential.
-  </p>
-  <div class="chain">
-    <div class="chain-item">
-      <div class="chain-num">1</div>
-      <div><div class="name">OS Keychain</div><div class="desc">macOS Keychain, Linux Secret Service, Windows Credential Manager</div></div>
-    </div>
-    <div class="chain-item">
-      <div class="chain-num">2</div>
-      <div><div class="name">SSH Keys</div><div class="desc">~/.ssh/id_ed25519, id_rsa, id_ecdsa</div></div>
-    </div>
-    <div class="chain-item">
-      <div class="chain-num">3</div>
-      <div><div class="name">Git Credential Helper</div><div class="desc">git credential-store, git credential-cache, GCM</div></div>
-    </div>
-    <div class="chain-item">
-      <div class="chain-num">4</div>
-      <div><div class="name">Environment Variable</div><div class="desc">COPYGIT_TOKEN_&lt;PROVIDER_NAME&gt;</div></div>
-    </div>
-    <div class="chain-item">
-      <div class="chain-num">5</div>
-      <div><div class="name">Encrypted File</div><div class="desc">~/.copygit/credentials (enforced 0600 permissions)</div></div>
+  <div class="reveal" style="margin-top: 3.5rem;">
+    <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem;">Credential Resolution Chain</h3>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+      CopyGit tries each source in order until it finds a valid credential.
+    </p>
+    <div class="chain">
+      <div class="chain-item">
+        <div class="chain-num">1</div>
+        <div><div class="name">OS Keychain</div><div class="desc">macOS Keychain, Linux Secret Service, Windows Credential Manager</div></div>
+      </div>
+      <div class="chain-item">
+        <div class="chain-num">2</div>
+        <div><div class="name">SSH Keys</div><div class="desc">~/.ssh/id_ed25519, id_rsa, id_ecdsa</div></div>
+      </div>
+      <div class="chain-item">
+        <div class="chain-num">3</div>
+        <div><div class="name">Git Credential Helper</div><div class="desc">git credential-store, git credential-cache, GCM</div></div>
+      </div>
+      <div class="chain-item">
+        <div class="chain-num">4</div>
+        <div><div class="name">Environment Variable</div><div class="desc">COPYGIT_TOKEN_&lt;PROVIDER_NAME&gt;</div></div>
+      </div>
+      <div class="chain-item">
+        <div class="chain-num">5</div>
+        <div><div class="name">Encrypted File</div><div class="desc">~/.copygit/credentials (enforced 0600 permissions)</div></div>
+      </div>
     </div>
   </div>
 </section>
@@ -850,106 +1277,219 @@ last_sync     = <span class="string">"2026-03-06T16:55:00Z"</span></pre>
 
 <!-- Installation -->
 <section id="install">
-  <h2 class="section-title">Installation</h2>
-  <p class="section-desc">Multiple ways to get CopyGit.</p>
+  <div class="section-header reveal">
+    <div class="section-label">Installation</div>
+    <h2 class="section-title">Multiple ways to get CopyGit</h2>
+    <p class="section-desc">Go install, pre-built binaries, source, or Docker.</p>
+  </div>
 
   <div class="install-grid">
-    <div class="install-card">
+    <div class="install-card reveal reveal-delay-1">
       <h3>Go Install</h3>
-      <pre><span class="cmd">go install</span> github.com/ihsanmokhlisse/copygit/cmd/copygit@latest</pre>
+      <div class="code-block-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="cmd">go install</span> github.com/ihsanmokhlisse/copygit/cmd/copygit@latest</pre>
+      </div>
     </div>
-    <div class="install-card">
+    <div class="install-card reveal reveal-delay-2">
       <h3>From Source</h3>
-      <pre><span class="cmd">git clone</span> https://github.com/ihsanmokhlisse/copygit.git
+      <div class="code-block-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="cmd">git clone</span> https://github.com/ihsanmokhlisse/copygit.git
 <span class="cmd">cd</span> copygit
 <span class="cmd">make build</span>     <span class="comment"># binary at ./bin/copygit</span>
 <span class="cmd">make install</span>   <span class="comment"># installs to $GOPATH/bin</span></pre>
+      </div>
     </div>
-    <div class="install-card">
+    <div class="install-card reveal reveal-delay-3">
       <h3>Pre-built Binaries</h3>
       <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
         Download from <a href="https://github.com/ihsanmokhlisse/copygit/releases/latest" target="_blank" rel="noopener">GitHub Releases</a>. All binaries are signed with Cosign.
       </p>
       <div class="platform-badges">
         <span class="badge">macOS Intel</span>
-        <span class="badge">macOS Apple Silicon</span>
+        <span class="badge">macOS ARM</span>
         <span class="badge">Linux x86_64</span>
         <span class="badge">Linux ARM64</span>
         <span class="badge">Windows x86_64</span>
         <span class="badge">Windows ARM64</span>
       </div>
     </div>
-    <div class="install-card">
+    <div class="install-card reveal reveal-delay-4">
       <h3>Docker</h3>
-      <pre><span class="cmd">docker pull</span> ghcr.io/ihsanmokhlisse/copygit:latest
+      <div class="code-block-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="cmd">docker pull</span> ghcr.io/ihsanmokhlisse/copygit:latest
 
 <span class="cmd">docker run</span> <span class="flag">--rm</span> ghcr.io/ihsanmokhlisse/copygit <span class="flag">--help</span></pre>
+      </div>
     </div>
   </div>
 
-  <h3 style="margin-top: 2.5rem; font-size: 1.15rem;">Requirements</h3>
-  <table class="flags-table" style="max-width: 400px;">
-    <tbody>
-      <tr><td>Go</td><td>1.21+</td></tr>
-      <tr><td>Git</td><td>2.x+</td></tr>
-      <tr><td>Platform</td><td>Linux, macOS, Windows</td></tr>
-    </tbody>
-  </table>
+  <div class="reveal" style="margin-top: 2.5rem;">
+    <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem;">Requirements</h3>
+    <div class="table-scroll" style="max-width: 400px;">
+      <table class="flags-table">
+        <tbody>
+          <tr><td>Go</td><td>1.21+</td></tr>
+          <tr><td>Git</td><td>2.x+</td></tr>
+          <tr><td>Platform</td><td>Linux, macOS, Windows</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </section>
 
 <hr class="divider">
 
 <!-- Architecture -->
 <section id="architecture">
-  <h2 class="section-title">Architecture</h2>
-  <p class="section-desc">Clean layered design with interface-driven components.</p>
+  <div class="section-header reveal">
+    <div class="section-label">Architecture</div>
+    <h2 class="section-title">Clean layered design</h2>
+    <p class="section-desc">Interface-driven components with no global state.</p>
+  </div>
 
-  <div class="arch-diagram"><span class="dir">cmd/copygit/</span>           <span class="desc">CLI entry point + Cobra commands</span>
-    <span class="dir">command/</span>           <span class="desc">init, push, sync, status, list, remove, config, hooks, daemon</span>
+  <div class="arch-diagram reveal"><span class="dir">cmd/copygit/</span>           CLI entry point + Cobra commands
+    <span class="dir">command/</span>           init, push, sync, status, list, remove, config, hooks, daemon
 
 <span class="dir">internal/</span>
-    <span class="dir">model/</span>             <span class="desc">Domain types (ProviderConfig, Credential, SyncTarget, ConflictInfo)</span>
-    <span class="dir">config/</span>            <span class="desc">TOML config management (global + per-repo + registry)</span>
-    <span class="dir">credential/</span>        <span class="desc">Multi-source credential chain (keyring, SSH, env, file, githelper)</span>
-    <span class="dir">git/</span>               <span class="desc">Git CLI wrapper (executor, remote, branch, tag, status)</span>
-    <span class="dir">provider/</span>          <span class="desc">Provider adapters (GitHub, GitLab, Gitea, generic) with registry</span>
-    <span class="dir">sync/</span>              <span class="desc">Orchestrator for push/fetch operations with conflict detection</span>
-    <span class="dir">output/</span>            <span class="desc">Formatters (text, JSON) for human and machine output</span>
-    <span class="dir">lock/</span>              <span class="desc">Per-repo file locking (flock on Unix, LockFileEx on Windows)</span>
-    <span class="dir">hook/</span>              <span class="desc">Git hook management (marker-based insertion, safe coexistence)</span>
-    <span class="dir">daemon/</span>            <span class="desc">Background polling daemon with PID file management</span></div>
+    <span class="dir">model/</span>             Domain types (ProviderConfig, Credential, SyncTarget, ConflictInfo)
+    <span class="dir">config/</span>            TOML config management (global + per-repo + registry)
+    <span class="dir">credential/</span>        Multi-source credential chain (keyring, SSH, env, file, githelper)
+    <span class="dir">git/</span>               Git CLI wrapper (executor, remote, branch, tag, status)
+    <span class="dir">provider/</span>          Provider adapters (GitHub, GitLab, Gitea, generic) with registry
+    <span class="dir">sync/</span>              Orchestrator for push/fetch with conflict detection
+    <span class="dir">output/</span>            Formatters (text, JSON) for human and machine output
+    <span class="dir">lock/</span>              Per-repo file locking (flock on Unix, LockFileEx on Windows)
+    <span class="dir">hook/</span>              Git hook management (marker-based insertion, safe coexistence)
+    <span class="dir">daemon/</span>            Background polling daemon with PID file management</div>
 
   <div class="features" style="margin-top: 2rem;">
-    <div class="feature-card">
+    <div class="feature-card reveal reveal-delay-1">
       <h3>Native Git</h3>
-      <p>Wraps the <code>git</code> CLI via <code>os/exec</code>. No custom protocols, no lock-in. Your repos stay standard Git repos.</p>
+      <p>Wraps the <code>git</code> CLI via <code>os/exec</code>. No custom protocols, no lock-in.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card reveal reveal-delay-2">
       <h3>Interface-Driven</h3>
-      <p><code>GitExecutor</code>, <code>Provider</code>, <code>CredentialResolver</code>, and <code>Formatter</code> are all interfaces with test fakes.</p>
+      <p><code>GitExecutor</code>, <code>Provider</code>, <code>CredentialResolver</code>, <code>Formatter</code> &mdash; all interfaces with test fakes.</p>
     </div>
-    <div class="feature-card">
+    <div class="feature-card reveal reveal-delay-3">
       <h3>Per-Repo Locking</h3>
-      <p>File-based locks prevent concurrent syncs on the same repository. Platform-specific: <code>flock</code> on Unix, <code>LockFileEx</code> on Windows.</p>
+      <p>File-based locks prevent concurrent syncs. Platform-specific: <code>flock</code> / <code>LockFileEx</code>.</p>
     </div>
   </div>
 </section>
 
-<hr class="divider">
-
 <!-- Footer -->
 <footer>
-  <p>
-    Built by <a href="https://github.com/ihsanmokhlisse" target="_blank" rel="noopener">ihsanmokhlisse</a>
-    &nbsp;&middot;&nbsp;
-    <a href="https://github.com/ihsanmokhlisse/copygit" target="_blank" rel="noopener">Source Code</a>
-    &nbsp;&middot;&nbsp;
-    <a href="https://github.com/ihsanmokhlisse/copygit/releases" target="_blank" rel="noopener">Releases</a>
-  </p>
-  <p style="margin-top: 0.5rem; color: #484f58;">
-    MIT License
-  </p>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="logo">Copy<span>Git</span></div>
+      <p>Mirror your Git repositories across multiple providers automatically. Built for developers who value redundancy.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Product</h4>
+      <ul>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#install">Installation</a></li>
+        <li><a href="#commands">CLI Reference</a></li>
+        <li><a href="#config">Configuration</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Resources</h4>
+      <ul>
+        <li><a href="#quickstart">Quick Start</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="https://github.com/ihsanmokhlisse/copygit/releases" target="_blank" rel="noopener">Releases</a></li>
+        <li><a href="https://github.com/ihsanmokhlisse/copygit/issues" target="_blank" rel="noopener">Issues</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Links</h4>
+      <ul>
+        <li><a href="https://github.com/ihsanmokhlisse/copygit" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/ihsanmokhlisse" target="_blank" rel="noopener">Author</a></li>
+        <li><a href="https://github.com/ihsanmokhlisse/copygit/blob/master/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>Built by ihsanmokhlisse</span>
+    <span>MIT License</span>
+  </div>
 </footer>
+
+<script>
+// Hamburger menu
+const hamburger = document.querySelector('.hamburger');
+const overlay = document.querySelector('.mobile-overlay');
+hamburger.addEventListener('click', () => {
+  hamburger.classList.toggle('open');
+  overlay.classList.toggle('open');
+  document.body.style.overflow = overlay.classList.contains('open') ? 'hidden' : '';
+});
+overlay.querySelectorAll('a').forEach(a => {
+  a.addEventListener('click', () => {
+    hamburger.classList.remove('open');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  });
+});
+
+// Nav scroll effect
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  document.querySelector('nav').classList.toggle('scrolled', window.scrollY > 50);
+}, { passive: true });
+
+// Scroll spy
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-links a[href^="#"]');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector('.nav-links a[href="#' + entry.target.id + '"]');
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-40% 0px -60% 0px' });
+sections.forEach(s => observer.observe(s));
+
+// Scroll reveal
+const revealObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+// Copy code
+function copyCode(btn) {
+  const pre = btn.parentElement.querySelector('pre');
+  const text = pre.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// Copy install command
+function copyInstall(el) {
+  const text = el.querySelector('code').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const hint = el.querySelector('.copy-hint');
+    hint.textContent = 'copied!';
+    hint.style.color = 'var(--green)';
+    setTimeout(() => { hint.textContent = 'click to copy'; hint.style.color = ''; }, 2000);
+  });
+}
+</script>
 
 </body>
 </html>
