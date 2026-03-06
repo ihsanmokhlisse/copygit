@@ -7,8 +7,9 @@ import (
 	"log/slog"
 	"os"
 
+	toml "github.com/pelletier/go-toml/v2"
+
 	"github.com/imokhlis/copygit/internal/model"
-	"github.com/pelletier/go-toml/v2"
 )
 
 // FileResolver resolves credentials from the ~/.copygit/credentials file.

@@ -1,9 +1,12 @@
 project_name: copygit
-version: "{{ .Version }}"
+version: 2
+
 release:
   github:
-    owner: imokhlis
+    owner: ihsanmokhlisse
     name: copygit
+  draft: false
+  prerelease: auto
 
 builds:
   - id: copygit
@@ -19,7 +22,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X main.Version={{ .Version }}
+      - -s -w -X main.Version={{ .Version }} -X main.Commit={{ .ShortCommit }} -X main.Date={{ .Date }}
 
 archives:
   - format: tar.gz
@@ -33,5 +36,24 @@ archives:
 
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+  groups:
+    - title: Features
+      regexp: "^.*feat.*$"
+      order: 0
+    - title: Bug Fixes
+      regexp: "^.*fix.*$"
+      order: 1
+    - title: Other
+      order: 999
 
 dockers: []

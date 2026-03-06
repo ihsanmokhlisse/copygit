@@ -6,8 +6,9 @@ import (
 	"path/filepath"
 	"time"
 
+	toml "github.com/pelletier/go-toml/v2"
+
 	"github.com/imokhlis/copygit/internal/model"
-	"github.com/pelletier/go-toml/v2"
 )
 
 // LoadRepoRegistry reads the global repository registry from the given path.

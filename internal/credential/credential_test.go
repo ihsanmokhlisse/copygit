@@ -8,9 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/imokhlis/copygit/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/imokhlis/copygit/internal/model"
 )
 
 // testLogger returns a silent logger for tests.

@@ -1,6 +1,9 @@
 # IDE and editor config
 .idea/
 .vscode/
+.claude/
+.cursor/
+.specify/
 *.swp
 *.swo
 *~
@@ -19,6 +22,6 @@ Thumbs.db
 # Go module cache (if vendoring)
 vendor/
 
-# Internal planning / scaffolding (not part of the project)
+# Internal planning (not part of the project)
 specs/
 docs/plans/

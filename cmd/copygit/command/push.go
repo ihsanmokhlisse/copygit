@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/imokhlis/copygit/internal/config"
 	"github.com/imokhlis/copygit/internal/credential"
 	"github.com/imokhlis/copygit/internal/git"
@@ -14,7 +16,6 @@ import (
 	"github.com/imokhlis/copygit/internal/output"
 	"github.com/imokhlis/copygit/internal/provider"
 	"github.com/imokhlis/copygit/internal/sync"
-	"github.com/spf13/cobra"
 )
 
 // NewPushCmdV2 creates the enhanced "push" command (T066-T075).

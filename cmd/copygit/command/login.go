@@ -7,12 +7,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+	"golang.org/x/term"
+
 	"github.com/imokhlis/copygit/internal/config"
 	"github.com/imokhlis/copygit/internal/credential"
 	"github.com/imokhlis/copygit/internal/model"
 	"github.com/imokhlis/copygit/internal/provider"
-	"github.com/spf13/cobra"
-	"golang.org/x/term"
 )
 
 // NewLoginCmd creates the "login" command per cli-commands.md.

@@ -6,11 +6,12 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/imokhlis/copygit/internal/git"
 	"github.com/imokhlis/copygit/internal/model"
 	"github.com/imokhlis/copygit/internal/provider"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func testLogger() *slog.Logger {

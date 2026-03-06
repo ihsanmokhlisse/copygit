@@ -6,8 +6,9 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/imokhlis/copygit/internal/config"
 	"github.com/spf13/cobra"
+
+	"github.com/imokhlis/copygit/internal/config"
 )
 
 // NewRemoveCmdV2 creates the enhanced "remove" command (T091-T096).

@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/imokhlis/copygit/internal/model"
-	"github.com/imokhlis/copygit/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/imokhlis/copygit/internal/model"
+	"github.com/imokhlis/copygit/internal/sync"
 )
 
 func TestTextFormatter_PrintSyncReport(t *testing.T) {

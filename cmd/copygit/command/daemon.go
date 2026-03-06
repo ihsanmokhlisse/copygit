@@ -10,11 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/imokhlis/copygit/internal/config"
 	"github.com/imokhlis/copygit/internal/credential"
 	"github.com/imokhlis/copygit/internal/daemon"
 	"github.com/imokhlis/copygit/internal/git"
-	"github.com/spf13/cobra"
 )
 
 // NewDaemonCmd creates the "daemon" parent command per cli-commands.md.

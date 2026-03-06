@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	toml "github.com/pelletier/go-toml/v2"
+
 	"github.com/imokhlis/copygit/internal/model"
-	"github.com/pelletier/go-toml/v2"
 )
 
 // GlobalConfig is the top-level configuration structure.

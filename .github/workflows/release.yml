@@ -1,0 +1,453 @@
+name: Release Pipeline
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  security-events: write
+
+env:
+  GO_VERSION: "1.24"
+  COVERAGE_THRESHOLD: "35"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ─── Detect Release vs Regular CI ──────────────────────────────────────────
+  metadata:
+    name: Detect Release
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.check.outputs.is_release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - name: Check if release
+        id: check
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [[ "$REF" == refs/tags/v* ]]; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+            VERSION=${REF#refs/tags/}
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+            echo "version=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ─── Security: Dependencies ───────────────────────────────────────────────
+  security-deps:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Vulnerability check
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  # ─── Security: SAST ───────────────────────────────────────────────────────
+  security-sast:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: SAST scan
+        uses: securego/gosec@master
+        with:
+          args: '-no-fail -fmt json -out /tmp/gosec.json ./...'
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sast-results
+          path: /tmp/gosec.json
+
+  # ─── Quality: Lint ────────────────────────────────────────────────────────
+  quality-lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+  # ─── Quality: Format ──────────────────────────────────────────────────────
+  quality-fmt:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Check import ordering
+        run: |
+          go install github.com/incu6us/goimports-reviser/v3@latest
+          goimports-reviser -recursive -set-alias -rm-unused ./...
+          git diff --exit-code || (echo "::error::Import ordering issues detected. Run: goimports-reviser -recursive -set-alias -rm-unused ./..." && exit 1)
+
+  # ─── Quality: Vet ─────────────────────────────────────────────────────────
+  quality-vet:
+    name: Vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: go vet ./...
+
+  # ─── Build ────────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [security-deps, security-sast, quality-lint, quality-fmt, quality-vet]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build binary
+        run: make build
+      - name: Generate SBOM
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          /usr/local/bin/syft dir:. -o spdx-json > sbom.spdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary
+          path: bin/copygit
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+  # ─── Tests: Unit (Tier 1) ─────────────────────────────────────────────────
+  test-tier1:
+    name: "Test: Logic"
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: go test -count=1 -v ./internal/model/... ./internal/git/... ./internal/output/...
+
+  # ─── Tests: Unit (Tier 2) ─────────────────────────────────────────────────
+  test-tier2:
+    name: "Test: I/O"
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: go test -count=1 -v ./internal/config/... ./internal/credential/... ./internal/daemon/... ./internal/lock/...
+
+  # ─── Tests: Unit (Tier 3) ─────────────────────────────────────────────────
+  test-tier3:
+    name: "Test: External"
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: go test -count=1 -v ./internal/provider/... ./internal/sync/... ./internal/hook/...
+
+  # ─── Tests: Integration ───────────────────────────────────────────────────
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: go test -v -tags=integration -timeout=300s ./...
+
+  # ─── Tests: Race ──────────────────────────────────────────────────────────
+  test-race:
+    name: Race Detector
+    runs-on: ubuntu-latest
+    needs: [test-tier1, test-tier2, test-tier3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: go test -race -count=1 ./internal/lock/... ./internal/sync/... ./internal/daemon/...
+
+  # ─── Tests: Coverage ──────────────────────────────────────────────────────
+  test-coverage:
+    name: Coverage Check
+    runs-on: ubuntu-latest
+    needs: [test-tier1, test-tier2, test-tier3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Run coverage
+        env:
+          THRESHOLD: ${{ env.COVERAGE_THRESHOLD }}
+        run: |
+          go test -coverprofile=cover.out -covermode=atomic ./...
+          TOTAL=$(go tool cover -func=cover.out | tail -1 | awk '{print $NF}' | tr -d '%')
+          echo "Coverage: ${TOTAL}%"
+          if (( $(echo "$TOTAL < $THRESHOLD" | bc -l) )); then
+            echo "::error::Coverage ${TOTAL}% is below threshold ${THRESHOLD}%"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: cover.out
+
+  # ─── Quality Gate ─────────────────────────────────────────────────────────
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: [quality-lint, quality-fmt, quality-vet, test-race, test-coverage, test-integration, security-deps, security-sast, build]
+    if: always()
+    steps:
+      - name: Verify all checks
+        env:
+          LINT: ${{ needs.quality-lint.result }}
+          FMT: ${{ needs.quality-fmt.result }}
+          VET: ${{ needs.quality-vet.result }}
+          RACE: ${{ needs.test-race.result }}
+          COVERAGE: ${{ needs.test-coverage.result }}
+          INTEGRATION: ${{ needs.test-integration.result }}
+          DEPS: ${{ needs.security-deps.result }}
+          SAST: ${{ needs.security-sast.result }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          FAILED=0
+          for CHECK in LINT FMT VET RACE COVERAGE INTEGRATION DEPS SAST BUILD; do
+            RESULT=$(eval echo "\$$CHECK")
+            if [ "$RESULT" != "success" ]; then
+              echo "::error::$CHECK: $RESULT"
+              FAILED=1
+            else
+              echo "$CHECK: passed"
+            fi
+          done
+          if [ "$FAILED" = "1" ]; then
+            echo "::error::Quality gate failed"
+            exit 1
+          fi
+          echo "All checks passed"
+
+  # ─── Release: Build Multi-Platform ────────────────────────────────────────
+  release-build:
+    name: Build Release
+    runs-on: ubuntu-latest
+    needs: [metadata, quality-gate]
+    if: needs.metadata.outputs.is_release == 'true'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist/
+          retention-days: 30
+
+  # ─── Release: Sign Artifacts ──────────────────────────────────────────────
+  release-sign:
+    name: Sign Artifacts
+    runs-on: ubuntu-latest
+    needs: [metadata, release-build]
+    if: needs.metadata.outputs.is_release == 'true'
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist/
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign release artifacts
+        run: |
+          for file in dist/copygit_*; do
+            if [ -f "$file" ] && [[ "$file" != *.sig ]]; then
+              cosign sign-blob --yes --output-signature "$file.sig" "$file"
+              echo "Signed: $file"
+            fi
+          done
+      - name: Upload signatures to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          for sig in dist/*.sig; do
+            if [ -f "$sig" ]; then
+              gh release upload "$VERSION" "$sig" --repo "$GITHUB_REPOSITORY" --clobber || true
+            fi
+          done
+
+  # ─── Release: Build Container ─────────────────────────────────────────────
+  release-container:
+    name: Build Container
+    runs-on: ubuntu-latest
+    needs: [metadata, quality-gate]
+    if: needs.metadata.outputs.is_release == 'true'
+    permissions:
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.metadata.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.metadata.outputs.version }}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Scan container
+        env:
+          IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy image --severity HIGH,CRITICAL "$IMAGE_REF" || true
+
+  # ─── Release: Sign Container ──────────────────────────────────────────────
+  release-sign-container:
+    name: Sign Container
+    runs-on: ubuntu-latest
+    needs: [metadata, release-container]
+    if: needs.metadata.outputs.is_release == 'true'
+    permissions:
+      packages: write
+      id-token: write
+    steps:
+      - uses: sigstore/cosign-installer@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Sign container image
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        run: cosign sign --yes "$IMAGE"
+
+  # ─── Validation: Multi-Platform ───────────────────────────────────────────
+  validate-linux:
+    name: Validate Linux
+    runs-on: ubuntu-latest
+    needs: [metadata, release-build]
+    if: needs.metadata.outputs.is_release == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: go build -o ./copygit ./cmd/copygit && ./copygit --help
+
+  validate-macos:
+    name: Validate macOS
+    runs-on: macos-latest
+    needs: [metadata, release-build]
+    if: needs.metadata.outputs.is_release == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: go build -o ./copygit ./cmd/copygit && ./copygit --help
+
+  validate-windows:
+    name: Validate Windows
+    runs-on: windows-latest
+    needs: [metadata, release-build]
+    if: needs.metadata.outputs.is_release == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: |
+          go build -o copygit.exe ./cmd/copygit
+          .\copygit.exe --help
+
+  # ─── Final Status ─────────────────────────────────────────────────────────
+  status:
+    name: Pipeline Status
+    runs-on: ubuntu-latest
+    needs: [metadata, quality-gate]
+    if: always()
+    steps:
+      - name: Report
+        env:
+          IS_RELEASE: ${{ needs.metadata.outputs.is_release }}
+          VERSION: ${{ needs.metadata.outputs.version }}
+          GATE: ${{ needs.quality-gate.result }}
+        run: |
+          if [ "$GATE" != "success" ]; then
+            echo "::error::Pipeline failed - quality gate did not pass"
+            exit 1
+          fi
+          if [ "$IS_RELEASE" = "true" ]; then
+            echo "Release $VERSION pipeline completed successfully"
+          else
+            echo "CI pipeline passed for master"
+          fi

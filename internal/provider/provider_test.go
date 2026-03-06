@@ -8,9 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/imokhlis/copygit/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/imokhlis/copygit/internal/model"
 )
 
 func testLogger() *slog.Logger {

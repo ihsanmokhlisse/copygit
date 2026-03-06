@@ -11,10 +11,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/imokhlis/copygit/internal/config"
 	"github.com/imokhlis/copygit/internal/git"
 	"github.com/imokhlis/copygit/internal/model"
-	"github.com/spf13/cobra"
 )
 
 // NewInitCmd creates the enhanced "init" command (T056-T065).

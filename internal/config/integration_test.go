@@ -5,8 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/imokhlis/copygit/internal/model"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/imokhlis/copygit/internal/model"
 )
 
 func TestFullConfigWorkflow(t *testing.T) {

@@ -6,9 +6,10 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/imokhlis/copygit/internal/config"
 	"github.com/imokhlis/copygit/internal/output"
-	"github.com/spf13/cobra"
 )
 
 // NewListCmdV2 creates the enhanced "list" command (T086-T090).

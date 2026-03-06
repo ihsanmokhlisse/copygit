@@ -6,10 +6,11 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/imokhlis/copygit/internal/git"
 	"github.com/imokhlis/copygit/internal/hook"
 	"github.com/imokhlis/copygit/internal/model"
-	"github.com/spf13/cobra"
 )
 
 // NewHooksCmd creates the "hooks" parent command per cli-commands.md.

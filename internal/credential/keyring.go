@@ -5,8 +5,9 @@ import (
 	"errors"
 	"log/slog"
 
+	keyring "github.com/zalando/go-keyring"
+
 	"github.com/imokhlis/copygit/internal/model"
-	"github.com/zalando/go-keyring"
 )
 
 const keyringService = "copygit"

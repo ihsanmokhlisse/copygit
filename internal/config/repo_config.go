@@ -5,8 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
+	toml "github.com/pelletier/go-toml/v2"
+
 	"github.com/imokhlis/copygit/internal/model"
-	"github.com/pelletier/go-toml/v2"
 )
 
 // RepoConfigPath returns the expected .copygit.toml path for a repo.

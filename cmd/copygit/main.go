@@ -5,8 +5,9 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/imokhlis/copygit/cmd/copygit/command"
 	"github.com/spf13/cobra"
+
+	"github.com/imokhlis/copygit/cmd/copygit/command"
 )
 
 // Version is set at build time by GoReleaser.
