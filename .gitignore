@@ -25,3 +25,9 @@ vendor/
 # Internal planning (not part of the project)
 specs/
 docs/plans/
+
+# CopyGit local config (user-specific, contains credentials and personal sync targets)
+.copygit.toml
+.copygit/
+*.copygit.local
+copygit
