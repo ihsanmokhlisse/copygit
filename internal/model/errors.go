@@ -23,11 +23,12 @@ var (
 	ErrSyncInProgress    = errors.New("another sync operation is in progress")
 
 	// Repository errors
-	ErrEmptyRepository       = errors.New("repository has no commits")
-	ErrRemoteRepoMissing     = errors.New("remote repository does not exist")
-	ErrNotGitRepo            = errors.New("not a git repository")
-	ErrRepoNotRegistered     = errors.New("repository is not registered")
-	ErrRepoAlreadyRegistered = errors.New("repository is already registered")
+	ErrEmptyRepository        = errors.New("repository has no commits")
+	ErrRemoteRepoMissing      = errors.New("remote repository does not exist")
+	ErrRepositoryNotFound     = errors.New("repository not found on provider")
+	ErrNotGitRepo             = errors.New("not a git repository")
+	ErrRepoNotRegistered      = errors.New("repository is not registered")
+	ErrRepoAlreadyRegistered  = errors.New("repository is already registered")
 	ErrRepoPathMissing       = errors.New("registered repo path no longer exists")
 
 	// Aliases for backward compatibility and naming consistency

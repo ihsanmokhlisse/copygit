@@ -9,12 +9,12 @@ import (
 func TestRepoConfig_EnabledProviderNames(t *testing.T) {
 	tests := []struct {
 		name    string
-		targets []RepoSyncTarget
+		targets []RepoSyncTargetWithOverrides
 		want    []string
 	}{
 		{
 			name: "all enabled",
-			targets: []RepoSyncTarget{
+			targets: []RepoSyncTargetWithOverrides{
 				{ProviderName: "gh", Enabled: true},
 				{ProviderName: "gl", Enabled: true},
 			},
@@ -22,7 +22,7 @@ func TestRepoConfig_EnabledProviderNames(t *testing.T) {
 		},
 		{
 			name: "mixed",
-			targets: []RepoSyncTarget{
+			targets: []RepoSyncTargetWithOverrides{
 				{ProviderName: "gh", Enabled: true},
 				{ProviderName: "gl", Enabled: false},
 			},
@@ -30,7 +30,7 @@ func TestRepoConfig_EnabledProviderNames(t *testing.T) {
 		},
 		{
 			name:    "none",
-			targets: []RepoSyncTarget{},
+			targets: []RepoSyncTargetWithOverrides{},
 			want:    nil,
 		},
 	}

@@ -204,7 +204,7 @@ func pushSingleRepo(
 		}
 	}
 
-	report, err := orchestrator.Push(ctx, repo, providerMap, repoCfg.SyncTargets)
+	report, err := orchestrator.Push(ctx, repo, providerMap, repoCfg.AsRepoSyncTargets())
 	if err != nil {
 		return nil, fmt.Errorf("sync: %w", err)
 	}

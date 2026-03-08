@@ -103,7 +103,7 @@ func (d *Daemon) syncAllRepos(ctx context.Context) error { //nolint:unparam // e
 			}
 		}
 
-		_, err = orchestrator.Push(ctx, repo.Path, providerMap, repoCfg.SyncTargets)
+		_, err = orchestrator.Push(ctx, repo.Path, providerMap, repoCfg.AsRepoSyncTargets())
 		if err != nil {
 			d.logger.WarnContext(ctx, "sync failed", "repo", repo.Path, "error", err)
 		} else {

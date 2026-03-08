@@ -141,7 +141,7 @@ func RunStatus( //nolint:gocognit,gocyclo,funlen // status reporting requires ga
 			}
 		}
 
-		report, err := orchestrator.Status(ctx, repo, providerMap, repoCfg.SyncTargets)
+		report, err := orchestrator.Status(ctx, repo, providerMap, repoCfg.AsRepoSyncTargets())
 		if err != nil {
 			formatter.PrintError(fmt.Errorf("%s: %w", repo, err))
 			continue

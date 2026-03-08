@@ -205,7 +205,7 @@ func RunSync( //nolint:gocognit,gocyclo,funlen // full sync cycle is inherently 
 	}
 
 	orchestrator := sync.NewOrchestrator(gitExec, logger)
-	report, err := orchestrator.Push(ctx, absPath, providerMap, repoCfg.SyncTargets)
+	report, err := orchestrator.Push(ctx, absPath, providerMap, repoCfg.AsRepoSyncTargets())
 	if err != nil {
 		return fmt.Errorf("push: %w", err)
 	}

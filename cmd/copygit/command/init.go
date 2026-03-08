@@ -118,9 +118,19 @@ func RunInit(ctx context.Context, repoPath string, logger *slog.Logger) error {
 	}
 
 	// 7. Create repo config (T063)
+	targetsWithOverrides := make([]model.RepoSyncTargetWithOverrides, len(syncTargets))
+	for i, target := range syncTargets {
+		targetsWithOverrides[i] = model.RepoSyncTargetWithOverrides{
+			ProviderName: target.ProviderName,
+			RemoteURL:    target.RemoteURL,
+			Enabled:      target.Enabled,
+			Overrides:    nil,
+		}
+	}
+
 	repoConfig := &model.RepoConfig{
 		Version:     "1",
-		SyncTargets: syncTargets,
+		SyncTargets: targetsWithOverrides,
 	}
 
 	// 8. Save repo config (T064)

@@ -125,9 +125,17 @@ func RunClone(
 	targets := buildSyncTargets(repoURL, providerName, globalCfg, absPath)
 
 	if len(targets) > 0 {
+		targetsWithOverrides := make([]model.RepoSyncTargetWithOverrides, len(targets))
+		for i, t := range targets {
+			targetsWithOverrides[i] = model.RepoSyncTargetWithOverrides{
+				ProviderName: t.ProviderName,
+				RemoteURL:    t.RemoteURL,
+				Enabled:      t.Enabled,
+			}
+		}
 		repoConfig := &model.RepoConfig{
 			Version:     "1",
-			SyncTargets: targets,
+			SyncTargets: targetsWithOverrides,
 		}
 		if err := config.SaveRepoConfig(absPath, repoConfig); err != nil {
 			return fmt.Errorf("save repo config: %w", err)
