@@ -192,7 +192,7 @@ func pushSingleRepo(
 	defer func() { _ = fileLock.Unlock() }()
 
 	// Execute sync
-	orchestrator := sync.NewOrchestrator(gitExec, logger)
+	orchestrator := sync.NewOrchestrator(gitExec, logger).WithCredentialManager(credMgr)
 	providerMap := make(map[string]provider.Provider)
 	for _, name := range enabledProviders {
 		if prov, err := providerRegistry.Get(name); err == nil {
