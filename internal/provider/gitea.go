@@ -76,3 +76,21 @@ func (p *GiteaProvider) ValidateCredentials(ctx context.Context, cred *model.Cre
 func (p *GiteaProvider) RepoExists(ctx context.Context, cred *model.Credential) (bool, error) { //nolint:revive // required by Provider interface
 	return true, nil
 }
+
+// GetRepoMetadata fetches repository metadata from Gitea API.
+func (p *GiteaProvider) GetRepoMetadata(ctx context.Context, remoteURL string, cred *model.Credential) (*model.RepoMetadata, error) { //nolint:revive // required by Provider interface
+	// TODO: Implement Gitea metadata fetch
+	return nil, fmt.Errorf("gitea metadata operations not yet implemented")
+}
+
+// CreateRepository creates a new Gitea repository with specified metadata.
+func (p *GiteaProvider) CreateRepository(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error { //nolint:revive // required by Provider interface
+	// TODO: Implement Gitea repo creation
+	return fmt.Errorf("gitea repository creation not yet implemented")
+}
+
+// UpdateRepoMetadata updates metadata on existing Gitea repository.
+func (p *GiteaProvider) UpdateRepoMetadata(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error { //nolint:revive // required by Provider interface
+	// TODO: Implement Gitea metadata update
+	return fmt.Errorf("gitea metadata update not yet implemented")
+}

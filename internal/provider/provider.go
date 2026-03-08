@@ -25,6 +25,18 @@ type Provider interface {
 	// RepoExists checks if the remote repository exists.
 	RepoExists(ctx context.Context, cred *model.Credential) (bool, error)
 
+	// GetRepoMetadata fetches metadata from an existing repository.
+	// Returns model.ErrRepositoryNotFound if repo doesn't exist.
+	GetRepoMetadata(ctx context.Context, remoteURL string, cred *model.Credential) (*model.RepoMetadata, error)
+
+	// CreateRepository creates a new repository with the specified metadata.
+	// Returns error if repo already exists or creation fails.
+	CreateRepository(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error
+
+	// UpdateRepoMetadata updates metadata on an existing repository.
+	// Gracefully skips unsupported fields (logs warnings, doesn't fail).
+	UpdateRepoMetadata(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error
+
 	// RemoteURL returns the full git remote URL based on auth method.
 	RemoteURL(authMethod model.AuthMethod) string
 

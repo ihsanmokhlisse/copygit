@@ -76,3 +76,21 @@ func (p *GitLabProvider) ValidateCredentials(ctx context.Context, cred *model.Cr
 func (p *GitLabProvider) RepoExists(ctx context.Context, cred *model.Credential) (bool, error) { //nolint:revive // required by Provider interface
 	return true, nil
 }
+
+// GetRepoMetadata fetches project metadata from GitLab API.
+func (p *GitLabProvider) GetRepoMetadata(ctx context.Context, remoteURL string, cred *model.Credential) (*model.RepoMetadata, error) { //nolint:revive // required by Provider interface
+	// TODO: Implement GitLab metadata fetch
+	return nil, fmt.Errorf("gitlab metadata operations not yet implemented")
+}
+
+// CreateRepository creates a new GitLab project with specified metadata.
+func (p *GitLabProvider) CreateRepository(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error { //nolint:revive // required by Provider interface
+	// TODO: Implement GitLab project creation
+	return fmt.Errorf("gitlab repository creation not yet implemented")
+}
+
+// UpdateRepoMetadata updates metadata on existing GitLab project.
+func (p *GitLabProvider) UpdateRepoMetadata(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error { //nolint:revive // required by Provider interface
+	// TODO: Implement GitLab metadata update
+	return fmt.Errorf("gitlab metadata update not yet implemented")
+}

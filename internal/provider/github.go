@@ -59,10 +59,12 @@ func (p *GitHubProvider) ValidateCredentials(ctx context.Context, cred *model.Cr
 		return nil // SSH auth validated by git itself
 	}
 
-	apiURL := strings.TrimSuffix(p.config.BaseURL, "/") + "/user"
-
-	// GitHub Enterprise uses /api/v3/user
-	if !strings.Contains(p.config.BaseURL, "github.com") {
+	var apiURL string
+	if strings.Contains(p.config.BaseURL, "github.com") {
+		// GitHub.com: API is at api.github.com
+		apiURL = "https://api.github.com/user"
+	} else {
+		// GitHub Enterprise: API is at <base>/api/v3/user
 		apiURL = strings.TrimSuffix(p.config.BaseURL, "/") + "/api/v3/user"
 	}
 
@@ -95,4 +97,22 @@ func (p *GitHubProvider) ValidateCredentials(ctx context.Context, cred *model.Cr
 func (p *GitHubProvider) RepoExists(ctx context.Context, cred *model.Credential) (bool, error) { //nolint:revive // required by Provider interface
 	// TODO: Call GET /repos/{owner}/{repo} to verify
 	return true, nil
+}
+
+// GetRepoMetadata fetches repository metadata from GitHub API.
+func (p *GitHubProvider) GetRepoMetadata(ctx context.Context, remoteURL string, cred *model.Credential) (*model.RepoMetadata, error) { //nolint:revive // required by Provider interface
+	// TODO: Implement GitHub metadata fetch
+	return nil, fmt.Errorf("github metadata operations not yet implemented")
+}
+
+// CreateRepository creates a new GitHub repository with specified metadata.
+func (p *GitHubProvider) CreateRepository(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error { //nolint:revive // required by Provider interface
+	// TODO: Implement GitHub repo creation
+	return fmt.Errorf("github repository creation not yet implemented")
+}
+
+// UpdateRepoMetadata updates metadata on existing GitHub repository.
+func (p *GitHubProvider) UpdateRepoMetadata(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error { //nolint:revive // required by Provider interface
+	// TODO: Implement GitHub metadata update
+	return fmt.Errorf("github metadata update not yet implemented")
 }

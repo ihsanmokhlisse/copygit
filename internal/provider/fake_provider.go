@@ -14,6 +14,10 @@ type FakeProvider struct {
 	RepoExistsResult bool
 	RepoExistsErr    error
 	RemoteURLValue   string
+	GetMetadataResult *model.RepoMetadata
+	GetMetadataErr    error
+	CreateRepoErr     error
+	UpdateMetadataErr error
 }
 
 func (f *FakeProvider) Type() model.ProviderType { return f.TypeValue }
@@ -30,6 +34,18 @@ func (f *FakeProvider) ValidateCredentials(ctx context.Context, cred *model.Cred
 
 func (f *FakeProvider) RepoExists(ctx context.Context, cred *model.Credential) (bool, error) { //nolint:revive // required by Provider interface
 	return f.RepoExistsResult, f.RepoExistsErr
+}
+
+func (f *FakeProvider) GetRepoMetadata(ctx context.Context, remoteURL string, cred *model.Credential) (*model.RepoMetadata, error) { //nolint:revive // required by Provider interface
+	return f.GetMetadataResult, f.GetMetadataErr
+}
+
+func (f *FakeProvider) CreateRepository(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error { //nolint:revive // required by Provider interface
+	return f.CreateRepoErr
+}
+
+func (f *FakeProvider) UpdateRepoMetadata(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error { //nolint:revive // required by Provider interface
+	return f.UpdateMetadataErr
 }
 
 // FakeRegistry wraps a provider registry for tests.

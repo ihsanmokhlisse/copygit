@@ -47,3 +47,18 @@ func (p *GenericProvider) ValidateCredentials(ctx context.Context, cred *model.C
 func (p *GenericProvider) RepoExists(ctx context.Context, cred *model.Credential) (bool, error) { //nolint:revive // required by Provider interface
 	return true, nil
 }
+
+// GetRepoMetadata is not supported for generic providers.
+func (p *GenericProvider) GetRepoMetadata(ctx context.Context, remoteURL string, cred *model.Credential) (*model.RepoMetadata, error) { //nolint:revive // required by Provider interface
+	return nil, fmt.Errorf("generic providers do not support metadata operations")
+}
+
+// CreateRepository is not supported for generic providers.
+func (p *GenericProvider) CreateRepository(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error { //nolint:revive // required by Provider interface
+	return fmt.Errorf("generic providers do not support repository creation")
+}
+
+// UpdateRepoMetadata is not supported for generic providers.
+func (p *GenericProvider) UpdateRepoMetadata(ctx context.Context, remoteURL string, metadata *model.RepoMetadata, cred *model.Credential) error { //nolint:revive // required by Provider interface
+	return fmt.Errorf("generic providers do not support metadata updates")
+}
