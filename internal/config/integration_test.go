@@ -33,7 +33,7 @@ func TestFullConfigWorkflow(t *testing.T) {
 
 	repoCfg := &model.RepoConfig{
 		Version: "1",
-		SyncTargets: []model.RepoSyncTarget{
+		SyncTargets: []model.RepoSyncTargetWithOverrides{
 			{
 				ProviderName: "github",
 				RemoteURL:    "https://github.com/user/my-repo.git",

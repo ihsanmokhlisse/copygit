@@ -15,7 +15,7 @@ func TestRepoConfigSaveAndLoad(t *testing.T) {
 	// Create and save
 	cfg := &model.RepoConfig{
 		Version: "1",
-		SyncTargets: []model.RepoSyncTarget{
+		SyncTargets: []model.RepoSyncTargetWithOverrides{
 			{
 				ProviderName: "github",
 				RemoteURL:    "https://github.com/user/repo.git",
@@ -44,7 +44,7 @@ func TestLoadRepoConfigNotFound(t *testing.T) {
 func TestValidateRepoConfig(t *testing.T) {
 	cfg := &model.RepoConfig{
 		Version: "1",
-		SyncTargets: []model.RepoSyncTarget{
+		SyncTargets: []model.RepoSyncTargetWithOverrides{
 			{
 				ProviderName: "github",
 				RemoteURL:    "https://github.com/user/repo.git",
@@ -59,7 +59,7 @@ func TestValidateRepoConfig(t *testing.T) {
 	// Invalid: missing remote URL
 	badCfg := &model.RepoConfig{
 		Version: "1",
-		SyncTargets: []model.RepoSyncTarget{
+		SyncTargets: []model.RepoSyncTargetWithOverrides{
 			{
 				ProviderName: "github",
 				RemoteURL:    "",

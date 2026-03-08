@@ -65,6 +65,10 @@ func LoadGlobal(path string) (*GlobalConfig, error) {
 		return nil, fmt.Errorf("%w: %w", model.ErrConfigInvalid, err)
 	}
 
+	if cfg.Providers == nil {
+		cfg.Providers = make(map[string]model.ProviderConfig)
+	}
+
 	return cfg, nil
 }
 

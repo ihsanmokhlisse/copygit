@@ -43,10 +43,42 @@ type RepoSyncTarget struct {
 	Enabled      bool   `toml:"enabled"`    // Whether sync is active
 }
 
+// RepoConfigMetadata defines global metadata inheritance and defaults
+type RepoConfigMetadata struct {
+	InheritFrom   string `toml:"inherit_from"`   // "github", "gitlab", "gitea", or "none"
+	Visibility    string `toml:"visibility"`     // Default: "private"
+	Description   string `toml:"description"`    // Empty = inherit from source
+	Homepage      string `toml:"homepage"`
+	Topics        []string `toml:"topics"`
+	Language      string `toml:"language"`
+	License       string `toml:"license"`
+	WikiEnabled   *bool  `toml:"wiki_enabled"`
+	IssuesEnabled *bool  `toml:"issues_enabled"`
+	Archived      *bool  `toml:"archived"`
+}
+
+// RepoSyncTargetWithOverrides extends RepoSyncTarget with per-target overrides
+type RepoSyncTargetWithOverrides struct {
+	ProviderName string              `toml:"provider"`
+	RemoteURL    string              `toml:"remote_url"`
+	Enabled      bool                `toml:"enabled"`
+	Overrides    *MetadataOverrides   `toml:"overrides,omitempty"`
+}
+
+// ToRepoSyncTarget converts to the base RepoSyncTarget (backward compatible)
+func (r *RepoSyncTargetWithOverrides) ToRepoSyncTarget() RepoSyncTarget {
+	return RepoSyncTarget{
+		ProviderName: r.ProviderName,
+		RemoteURL:    r.RemoteURL,
+		Enabled:      r.Enabled,
+	}
+}
+
 // RepoConfig is the per-repo configuration stored at <repo-root>/.copygit.toml.
 type RepoConfig struct {
-	Version     string           `toml:"version"`
-	SyncTargets []RepoSyncTarget `toml:"sync_targets"`
+	Version     string                         `toml:"version"`
+	Metadata    *RepoConfigMetadata            `toml:"metadata,omitempty"`
+	SyncTargets []RepoSyncTargetWithOverrides `toml:"sync_targets"`
 }
 
 // EnabledProviderNames returns the names of all enabled sync targets.
@@ -58,6 +90,15 @@ func (rc *RepoConfig) EnabledProviderNames() []string {
 		}
 	}
 	return names
+}
+
+// AsRepoSyncTargets converts to base RepoSyncTarget slice (backward compatible)
+func (rc *RepoConfig) AsRepoSyncTargets() []RepoSyncTarget {
+	targets := make([]RepoSyncTarget, len(rc.SyncTargets))
+	for i, t := range rc.SyncTargets {
+		targets[i] = t.ToRepoSyncTarget()
+	}
+	return targets
 }
 
 // RepoRegistration tracks a registered repo in the global registry.

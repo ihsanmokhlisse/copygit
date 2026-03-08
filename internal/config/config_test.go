@@ -157,7 +157,7 @@ func TestRepoConfig_SaveAndLoad(t *testing.T) {
 
 	repoCfg := &model.RepoConfig{
 		Version: "1",
-		SyncTargets: []model.RepoSyncTarget{
+		SyncTargets: []model.RepoSyncTargetWithOverrides{
 			{ProviderName: "gh", RemoteURL: "git@github.com:u/r.git", Enabled: true},
 			{ProviderName: "gl", RemoteURL: "https://gl.com/u/r.git", Enabled: false},
 		},
@@ -176,7 +176,7 @@ func TestRepoConfig_SaveAndLoad(t *testing.T) {
 
 func TestRepoConfig_EnabledProviderNames(t *testing.T) {
 	cfg := &model.RepoConfig{
-		SyncTargets: []model.RepoSyncTarget{
+		SyncTargets: []model.RepoSyncTargetWithOverrides{
 			{ProviderName: "gh", Enabled: true},
 			{ProviderName: "gl", Enabled: false},
 			{ProviderName: "gt", Enabled: true},
