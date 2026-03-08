@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/imokhlis/copygit/internal/model"
@@ -104,5 +105,80 @@ func (r *MetadataResolver) applyGlobalOverrides(
 	}
 	if globalConfig.Archived != nil {
 		meta.Archived = *globalConfig.Archived
+	}
+}
+
+// CheckUnsupportedFields identifies metadata fields not supported by a provider.
+func CheckUnsupportedFields(meta *model.RepoMetadata, providerType string) []string {
+	var unsupported []string
+
+	switch providerType {
+	case "gitlab":
+		if meta.Language != "" {
+			unsupported = append(unsupported, "language")
+		}
+	case "gitea":
+		if meta.Language != "" {
+			unsupported = append(unsupported, "language")
+		}
+		if meta.License != "" {
+			unsupported = append(unsupported, "license")
+		}
+		if meta.Homepage != "" {
+			unsupported = append(unsupported, "homepage")
+		}
+		if meta.WikiEnabled {
+			unsupported = append(unsupported, "wiki_enabled")
+		}
+		if meta.IssuesEnabled {
+			unsupported = append(unsupported, "issues_enabled")
+		}
+	}
+
+	return unsupported
+}
+
+// LogMetadataSync logs metadata synchronization results.
+func LogMetadataSync(
+	ctx context.Context,
+	logger *slog.Logger,
+	providerName string,
+	sourceProvider string,
+	hasGlobalOverrides bool,
+	hasTargetOverrides bool,
+	unsupportedFields []string,
+) {
+	if sourceProvider != "" {
+		logger.InfoContext(ctx,
+			"inherited metadata",
+			"provider", providerName,
+			"from", sourceProvider,
+		)
+	} else {
+		logger.InfoContext(ctx,
+			"using default metadata",
+			"provider", providerName,
+		)
+	}
+
+	if hasGlobalOverrides {
+		logger.DebugContext(ctx,
+			"applied global metadata overrides",
+			"provider", providerName,
+		)
+	}
+
+	if hasTargetOverrides {
+		logger.DebugContext(ctx,
+			"applied provider-specific metadata overrides",
+			"provider", providerName,
+		)
+	}
+
+	for _, field := range unsupportedFields {
+		logger.WarnContext(ctx,
+			fmt.Sprintf("provider does not support %s field", field),
+			"provider", providerName,
+		)
 	}
 }

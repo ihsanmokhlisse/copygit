@@ -51,8 +51,29 @@ func (t *TextFormatter) PrintSyncReport(report *sync.SyncReport) error {
 	fmt.Fprintf(t.out, "Targets: %d (%d success, %d failures)\n",
 		report.TotalTargets, report.SuccessCount, report.FailureCount)
 
+	if len(report.ReposCreated) > 0 {
+		fmt.Fprintf(t.out, "\nRepositories Created:\n")
+		for _, repo := range report.ReposCreated {
+			fmt.Fprintf(t.out, "  ✓ %s\n", repo)
+		}
+	}
+
+	if len(report.MetadataSynced) > 0 {
+		fmt.Fprintf(t.out, "\nMetadata Synced:\n")
+		for _, meta := range report.MetadataSynced {
+			fmt.Fprintf(t.out, "  ✓ %s\n", meta)
+		}
+	}
+
+	if len(report.MetadataWarnings) > 0 {
+		fmt.Fprintf(t.out, "\nMetadata Warnings:\n")
+		for _, warn := range report.MetadataWarnings {
+			fmt.Fprintf(t.out, "  ⚠ %s\n", warn)
+		}
+	}
+
 	if len(report.Operations) > 0 {
-		fmt.Fprintf(t.out, "\nDetails:\n")
+		fmt.Fprintf(t.out, "\nOperation Details:\n")
 		for i := range report.Operations {
 			op := report.Operations[i]
 			status := string(op.Status)
