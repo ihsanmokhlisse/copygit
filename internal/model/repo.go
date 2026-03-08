@@ -73,3 +73,82 @@ type RepoRegistry struct {
 	Version string             `toml:"version"`
 	Repos   []RepoRegistration `toml:"repos"`
 }
+
+// Visibility defines repository visibility level.
+type Visibility string
+
+const (
+	VisibilityPublic   Visibility = "public"
+	VisibilityPrivate  Visibility = "private"
+	VisibilityInternal Visibility = "internal" // GitLab only
+)
+
+// RepoMetadata is a normalized representation of repository metadata
+// that abstracts differences between GitHub, GitLab, and Gitea.
+type RepoMetadata struct {
+	Visibility     Visibility `json:"visibility"`
+	Description    string     `json:"description"`
+	Homepage       string     `json:"homepage"`
+	Topics         []string   `json:"topics"`
+	Language       string     `json:"language"`          // GitHub only
+	License        string     `json:"license"`           // SPDX identifier
+	WikiEnabled    bool       `json:"wiki_enabled"`
+	IssuesEnabled  bool       `json:"issues_enabled"`
+	Archived       bool       `json:"archived"`
+	SourceProvider string     `json:"source_provider,omitempty"`
+	FetchedAt      time.Time  `json:"fetched_at,omitempty"`
+}
+
+// MetadataOverrides allows per-target overrides of inherited metadata
+type MetadataOverrides struct {
+	Visibility    *Visibility `toml:"visibility,omitempty"`
+	Description   *string     `toml:"description,omitempty"`
+	Homepage      *string     `toml:"homepage,omitempty"`
+	Topics        []string    `toml:"topics,omitempty"`
+	WikiEnabled   *bool       `toml:"wiki_enabled,omitempty"`
+	IssuesEnabled *bool       `toml:"issues_enabled,omitempty"`
+	Archived      *bool       `toml:"archived,omitempty"`
+}
+
+// Apply merges overrides into base metadata (overrides take precedence)
+func (m *RepoMetadata) ApplyOverrides(overrides *MetadataOverrides) {
+	if overrides == nil {
+		return
+	}
+	if overrides.Visibility != nil {
+		m.Visibility = *overrides.Visibility
+	}
+	if overrides.Description != nil {
+		m.Description = *overrides.Description
+	}
+	if overrides.Homepage != nil {
+		m.Homepage = *overrides.Homepage
+	}
+	if len(overrides.Topics) > 0 {
+		m.Topics = overrides.Topics
+	}
+	if overrides.WikiEnabled != nil {
+		m.WikiEnabled = *overrides.WikiEnabled
+	}
+	if overrides.IssuesEnabled != nil {
+		m.IssuesEnabled = *overrides.IssuesEnabled
+	}
+	if overrides.Archived != nil {
+		m.Archived = *overrides.Archived
+	}
+}
+
+// DefaultMetadata returns safe defaults for new repos (private, no description)
+func DefaultMetadata() *RepoMetadata {
+	return &RepoMetadata{
+		Visibility:    VisibilityPrivate,
+		Description:   "",
+		Homepage:      "",
+		Topics:        []string{},
+		Language:      "",
+		License:       "",
+		WikiEnabled:   true,
+		IssuesEnabled: true,
+		Archived:      false,
+	}
+}
