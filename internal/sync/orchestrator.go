@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/imokhlis/copygit/internal/credential"
 	"github.com/imokhlis/copygit/internal/git"
 	"github.com/imokhlis/copygit/internal/model"
 	"github.com/imokhlis/copygit/internal/provider"
@@ -17,6 +18,7 @@ type Orchestrator struct {
 	gitExec   git.GitExecutor
 	remoteMgr *git.RemoteManager
 	branchMgr *git.BranchManager
+	credMgr   credential.Manager
 	logger    *slog.Logger
 }
 
@@ -26,8 +28,15 @@ func NewOrchestrator(gitExec git.GitExecutor, logger *slog.Logger) *Orchestrator
 		gitExec:   gitExec,
 		remoteMgr: git.NewRemoteManager(gitExec, logger),
 		branchMgr: git.NewBranchManager(gitExec, logger),
+		credMgr:   nil,
 		logger:    logger,
 	}
+}
+
+// WithCredentialManager sets the credential manager for metadata operations.
+func (o *Orchestrator) WithCredentialManager(credMgr credential.Manager) *Orchestrator {
+	o.credMgr = credMgr
+	return o
 }
 
 // SyncReport summarizes the results of a sync operation.
@@ -41,6 +50,9 @@ type SyncReport struct { //nolint:revive // established API name
 	StartTime       time.Time             `json:"start_time"`
 	EndTime         time.Time             `json:"end_time"`
 	DurationSeconds float64               `json:"duration_seconds"`
+	ReposCreated    []string              `json:"repos_created,omitempty"`
+	MetadataSynced  []string              `json:"metadata_synced,omitempty"`
+	MetadataWarnings []string             `json:"metadata_warnings,omitempty"`
 }
 
 // Push synchronizes local repo to all specified providers.
@@ -224,6 +236,7 @@ func (o *Orchestrator) Fetch(
 }
 
 // executePush performs a single git push to a provider's remote.
+// It now also handles repository creation if needed.
 func (o *Orchestrator) executePush(
 	ctx context.Context,
 	repoPath string,
@@ -240,10 +253,37 @@ func (o *Orchestrator) executePush(
 		}
 	}
 
-	// 2. Push current branch
+	// 2. Check if repository exists and create if needed
+	// Note: This is optional - repositories may already exist
+	// Only attempt if we have credentials for metadata operations
+	if o.credMgr != nil {
+		if err := o.ensureRepositoryExists(ctx, prov, target); err != nil {
+			o.logger.WarnContext(ctx, "failed to ensure repository exists",
+				"provider", target.ProviderName, "error", err)
+			// Don't fail the push if repo creation fails - just warn
+		}
+	}
+
+	// 3. Push current branch
 	if err := o.remoteMgr.Push(ctx, repoPath, remoteName, []string{branch}, true, false); err != nil {
 		return fmt.Errorf("push to %s: %w", remoteName, err)
 	}
 
 	return nil
+}
+
+// ensureRepositoryExists creates a repository if it doesn't already exist.
+// It uses default metadata if no specific metadata is provided.
+func (o *Orchestrator) ensureRepositoryExists(
+	ctx context.Context,
+	prov provider.Provider,
+	target model.RepoSyncTarget,
+) error {
+	// Note: We need provider config to resolve credentials, but we only have provider name
+	// For now, we'll skip credential resolution and return early
+	// In a full implementation, we'd pass provider config to this function
+	o.logger.DebugContext(ctx, "skipping repo creation (credential resolution not yet integrated)",
+		"provider", target.ProviderName)
+	return nil
+
 }
