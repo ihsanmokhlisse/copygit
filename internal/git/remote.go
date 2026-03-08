@@ -80,6 +80,80 @@ func (rm *RemoteManager) Push(
 	return nil
 }
 
+// PushWithCredential pushes to a remote with explicit credential injection.
+// This pre-populates git's credential cache using `git credential approve`
+// to avoid interactive prompts.
+func (rm *RemoteManager) PushWithCredential(
+	ctx context.Context,
+	repoPath string,
+	remoteName string,
+	remoteURL string,
+	branches []string,
+	tags bool,
+	force bool,
+	username string,
+	token string,
+) error {
+	// Pre-approve credentials with git credential system
+	if token != "" {
+		if err := rm.storeCredentialInGit(ctx, repoPath, remoteURL, username, token); err != nil {
+			rm.logger.WarnContext(ctx, "failed to store credentials in git", "remote", remoteName, "error", err)
+			// Don't fail, continue with push attempt
+		}
+	}
+
+	// Execute the regular push
+	return rm.Push(ctx, repoPath, remoteName, branches, tags, force)
+}
+
+// storeCredentialInGit uses `git credential approve` to store credentials in git's cache.
+func (rm *RemoteManager) storeCredentialInGit(
+	ctx context.Context,
+	repoPath string,
+	remoteURL string,
+	username string,
+	token string,
+) error {
+	// Parse URL to extract protocol and host
+	var protocol, host string
+	if strings.HasPrefix(remoteURL, "https://") {
+		protocol = "https"
+		host = strings.TrimPrefix(remoteURL, "https://")
+		// Remove username@ if present
+		if idx := strings.Index(host, "@"); idx != -1 {
+			host = host[idx+1:]
+		}
+		// Remove path
+		if idx := strings.Index(host, "/"); idx != -1 {
+			host = host[:idx]
+		}
+	} else if strings.HasPrefix(remoteURL, "http://") {
+		protocol = "http"
+		host = strings.TrimPrefix(remoteURL, "http://")
+		if idx := strings.Index(host, "@"); idx != -1 {
+			host = host[idx+1:]
+		}
+		if idx := strings.Index(host, "/"); idx != -1 {
+			host = host[:idx]
+		}
+	} else {
+		// SSH or other protocol, skip credential storage
+		return nil
+	}
+
+	// Build credential input for `git credential approve`
+	credentialInput := fmt.Sprintf("protocol=%s\nhost=%s\nusername=%s\npassword=%s\n",
+		protocol, host, username, token)
+
+	_, err := rm.exec.RunWithStdin(ctx, repoPath, credentialInput, "credential", "approve")
+	if err != nil {
+		return fmt.Errorf("store credential: %w", err)
+	}
+
+	rm.logger.DebugContext(ctx, "stored credentials in git", "host", host, "protocol", protocol)
+	return nil
+}
+
 // Fetch fetches from a remote.
 func (rm *RemoteManager) Fetch(ctx context.Context, repoPath, remoteName string) error {
 	_, err := rm.exec.Run(ctx, repoPath, "fetch", remoteName)

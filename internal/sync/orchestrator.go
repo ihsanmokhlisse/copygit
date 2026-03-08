@@ -264,9 +264,33 @@ func (o *Orchestrator) executePush(
 		}
 	}
 
-	// 3. Push current branch
-	if err := o.remoteMgr.Push(ctx, repoPath, remoteName, []string{branch}, true, false); err != nil {
-		return fmt.Errorf("push to %s: %w", remoteName, err)
+	// 3. Try to inject credentials into git before pushing
+	// This pre-populates git's credential cache so it doesn't prompt
+	if o.credMgr != nil && prov != nil {
+		// Build provider config for credential resolution
+		providerCfg := model.ProviderConfig{
+			Name: target.ProviderName,
+		}
+
+		// Resolve credentials for the provider
+		cred, err := o.credMgr.Resolve(ctx, providerCfg)
+		if err == nil && cred != nil && cred.Token != "" {
+			// Pre-store credentials in git's cache using `git credential approve`
+			if err := o.remoteMgr.PushWithCredential(ctx, repoPath, remoteName, target.RemoteURL,
+				[]string{branch}, true, false, "git", cred.Token); err != nil {
+				return fmt.Errorf("push to %s: %w", remoteName, err)
+			}
+		} else {
+			// Fall back to regular push without credential injection
+			if err := o.remoteMgr.Push(ctx, repoPath, remoteName, []string{branch}, true, false); err != nil {
+				return fmt.Errorf("push to %s: %w", remoteName, err)
+			}
+		}
+	} else {
+		// No credential manager, use regular push
+		if err := o.remoteMgr.Push(ctx, repoPath, remoteName, []string{branch}, true, false); err != nil {
+			return fmt.Errorf("push to %s: %w", remoteName, err)
+		}
 	}
 
 	return nil
