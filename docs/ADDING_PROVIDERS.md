@@ -56,15 +56,25 @@ ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 #### 3. Login to CopyGit
 
 ```bash
-copygit login github
+copygit login --provider github
+```
+
+Or using short flag:
+```bash
+copygit login -p github
 ```
 
 **Prompt:**
 ```
-Enter GitHub token:
+Enter access token (reads from stdin):
 ```
 
 Paste your token and press Enter. It will be stored securely in your system keychain.
+
+**Alternative - Pass token via stdin (more secure):**
+```bash
+echo "ghp_xxxxxxxxxxxxx" | copygit login --provider github
+```
 
 #### 4. Verify
 
@@ -113,15 +123,15 @@ glpat-xxxxxxxxxxxxxxx
 #### 3. Login to CopyGit
 
 ```bash
-copygit login gitlab
+copygit login --provider gitlab
 ```
 
-**Prompt:**
-```
-Enter GitLab token:
+Or using short flag:
+```bash
+copygit login -p gitlab
 ```
 
-Paste your token.
+Paste your token when prompted.
 
 #### 4. Verify
 
@@ -155,15 +165,15 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 #### 3. Login to CopyGit
 
 ```bash
-copygit login gitea
+copygit login --provider gitea
 ```
 
-**Prompt:**
-```
-Enter Gitea token:
+Or using short flag:
+```bash
+copygit login -p gitea
 ```
 
-Paste your token.
+Paste your token when prompted.
 
 #### 4. Verify
 
@@ -212,14 +222,21 @@ copygit config add-provider gitea gitea https://gitea.example.com --auth-method 
 ### Step 3: Login to Each Provider
 
 ```bash
-copygit login github
+copygit login --provider github
 # Paste: ghp_xxxxx...
 
-copygit login gitlab
+copygit login --provider gitlab
 # Paste: glpat-xxxxx...
 
-copygit login gitea
+copygit login --provider gitea
 # Paste: xxxxx...
+```
+
+Or using short flags:
+```bash
+copygit login -p github
+copygit login -p gitlab
+copygit login -p gitea
 ```
 
 ### Step 4: Verify Setup
@@ -269,7 +286,7 @@ copygit config add-provider github github https://github.com --auth-method https
 
 ```bash
 copygit config add-provider github github https://github.com --auth-method https
-copygit login github
+copygit login --provider github
 # Paste personal access token
 ```
 
@@ -295,7 +312,7 @@ copygit config add-provider github github https://github.com --auth-method ssh
 
 ```bash
 copygit config add-provider github github https://github.com --auth-method token
-copygit login github
+copygit login --provider github
 # Paste token
 ```
 
@@ -344,7 +361,7 @@ copygit login github
 2. Check token has required scopes
 3. Re-login to refresh credentials:
    ```bash
-   copygit login <provider-name>
+   copygit login --provider <provider-name>
    ```
 
 ### Provider Not Found
@@ -366,7 +383,7 @@ copygit config add-provider <name> <type> <url> --auth-method https
 ```bash
 copygit config remove-provider <name>
 copygit config add-provider <name> <type> <url> --auth-method https
-copygit login <name>
+copygit login --provider <name>
 ```
 
 ### Multiple Accounts
@@ -376,11 +393,11 @@ copygit login <name>
 ```bash
 # Add personal account
 copygit config add-provider github-personal github https://github.com --auth-method https
-copygit login github-personal
+copygit login --provider github-personal
 
 # Add work account
 copygit config add-provider github-work github https://github.com --auth-method https
-copygit login github-work
+copygit login --provider github-work
 ```
 
 Then use different names in `.copygit.toml`:
