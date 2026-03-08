@@ -74,7 +74,7 @@ func (d *Daemon) syncAllRepos(ctx context.Context) error { //nolint:unparam // e
 		return nil
 	}
 
-	orchestrator := sync.NewOrchestrator(d.gitExec, d.logger)
+	orchestrator := sync.NewOrchestrator(d.gitExec, d.logger).WithCredentialManager(d.credMgr)
 
 	for _, repo := range d.registry.Repos {
 		repoCfg, err := config.LoadRepoConfig(repo.Path)
